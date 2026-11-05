@@ -1,0 +1,6 @@
+bin/
+obj/
+dump/
+tools/
+backups/
+*.log

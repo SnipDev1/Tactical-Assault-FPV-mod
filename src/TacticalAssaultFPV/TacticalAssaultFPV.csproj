@@ -1,0 +1,108 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>TacticalAssaultFPV</AssemblyName>
+    <RootNamespace>TacticalAssaultFPV</RootNamespace>
+    <OutputPath>../../bin/$(Configuration)/</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Deployment Paths -->
+    <GameDir Condition="'$(GameDir)' == ''">/mnt/olddisk/SteamLibrary/steamapps/common/Tactical Assault VR</GameDir>
+    <GameModsPath Condition="'$(GameModsPath)' == ''">$(GameDir)/Mods</GameModsPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- MelonLoader references -->
+    <Reference Include="MelonLoader">
+      <HintPath>../../tools/melonloader/MelonLoader/net6/MelonLoader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>../../tools/melonloader/MelonLoader/net6/0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>../../tools/melonloader/MelonLoader/net6/Il2CppInterop.Runtime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- Interop game assemblies -->
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>../../interop/Il2Cppmscorlib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>../../interop/UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>../../interop/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>../../interop/UnityEngine.AudioModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>../../interop/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>../../interop/UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>../../interop/UnityEngine.UI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>../../interop/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>../../interop/UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PhotonUnityNetworking">
+      <HintPath>../../interop/PhotonUnityNetworking.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PhotonRealtime">
+      <HintPath>../../interop/PhotonRealtime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Il2CppPhotonUnityNetworking">
+      <HintPath>../../interop/Il2CppPhotonUnityNetworking.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Il2CppPhotonRealtime">
+      <HintPath>../../interop/Il2CppPhotonRealtime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>../../interop/Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Il2CppHurricaneVR.Framework">
+      <HintPath>../../interop/Il2CppHurricaneVR.Framework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="Build">
+    <!-- Auto-create Mods directory if game installation exists but Mods folder was removed -->
+    <MakeDir Directories="$(GameModsPath)" Condition="!Exists('$(GameModsPath)') And Exists('$(GameDir)')" />
+
+    <!-- Copy mod DLL directly to game Mods directory -->
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(GameModsPath)/$(TargetFileName)" Condition="Exists('$(GameModsPath)')" ContinueOnError="true" />
+
+    <!-- Informative build messages -->
+    <Message Importance="High" Text="[DEPLOY] Successfully deployed $(TargetFileName) -&gt; $(GameModsPath)/$(TargetFileName)" Condition="Exists('$(GameModsPath)')" />
+    <Message Importance="High" Text="[DEPLOY] Game Mods directory not found ($(GameModsPath)); skipping auto-deployment." Condition="!Exists('$(GameModsPath)')" />
+  </Target>
+
+</Project>
