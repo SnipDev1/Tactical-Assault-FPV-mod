@@ -2331,9 +2331,24 @@ public class Program
         }
         Assert(clearedCycles == 50_000 && mode == 2, "50,000 Scene Transitions Clear State With 100% Loadout Mode Persistence");
 
-        // 23.3 PostBuild Configuration Validation
-        string csprojText = File.ReadAllText("/home/dmitry/Projects/Tactical Assault FPV/src/TacticalAssaultFPV/TacticalAssaultFPV.csproj");
-        bool hasGameDir = csprojText.Contains("<GameDir Condition=\"'$(GameDir)' == ''\">");
+        // 23.3 PostBuild Configuration Validation (Cross-Platform Windows / Linux)
+        static string FindCsproj()
+        {
+            string current = AppContext.BaseDirectory;
+            for (int i = 0; i < 6; i++)
+            {
+                string target = Path.Combine(current, "src", "TacticalAssaultFPV", "TacticalAssaultFPV.csproj");
+                if (File.Exists(target)) return target;
+                string? parent = Path.GetDirectoryName(current);
+                if (string.IsNullOrEmpty(parent) || parent == current) break;
+                current = parent;
+            }
+            return Path.Combine(Directory.GetCurrentDirectory(), "src", "TacticalAssaultFPV", "TacticalAssaultFPV.csproj");
+        }
+
+        string csprojPath = FindCsproj();
+        string csprojText = File.Exists(csprojPath) ? File.ReadAllText(csprojPath) : "";
+        bool hasGameDir = csprojText.Contains("<GameDir Condition=\"'$(GameDir)' == ''");
         bool hasGameModsPath = csprojText.Contains("<GameModsPath Condition=\"'$(GameModsPath)' == ''\">");
         bool hasPostBuild = csprojText.Contains("<Target Name=\"PostBuild\" AfterTargets=\"Build\">");
         bool hasMakeDir = csprojText.Contains("<MakeDir Directories=\"$(GameModsPath)\"");

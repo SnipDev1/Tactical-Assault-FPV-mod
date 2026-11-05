@@ -1,6 +1,7 @@
 # Tactical Assault FPV - Мод FPV-дрона камикадзе
 
 [![CI Test Suite](https://github.com/dmitry/tactical-assault-fpv/actions/workflows/ci.yml/badge.svg)](https://github.com/dmitry/tactical-assault-fpv/actions/workflows/ci.yml)
+[![Platform: Windows | Linux](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%28Steam%20Deck%29-0078D6)](https://store.steampowered.com/app/2314440/Tactical_Assault_VR/)
 [![.NET](https://img.shields.io/badge/.NET-6.0%20%7C%208.0-512BD4)](https://dotnet.microsoft.com/)
 [![MelonLoader](https://img.shields.io/badge/MelonLoader-0.6.x-brightgreen)](https://melonwiki.xyz/)
 [![Target Game](https://img.shields.io/badge/Game-Tactical%20Assault%20VR-blue)](https://store.steampowered.com/app/2314440/Tactical_Assault_VR/)
@@ -8,7 +9,7 @@
 
 [**English Version of README**](README.md)
 
-Полноценный мод для тактического VR-шутера **Tactical Assault VR** (Unity 6 / IL2CPP x64), добавляющий в игру комплект из **трех ударных FPV-дронов камикадзе**, тактический пульт-планшет с цифровым экраном и телеметрией OSD, реалистичную физику полета, плавный оптический зум до 10x, наклон камеры вниз на 90° и полную интеграцию в оружейную комнату (Armory) и разгрузочный жилет оператора.
+Полноценный мод для тактического VR-шутера **Tactical Assault VR** (Unity 6 / IL2CPP x64), полностью поддерживающий **Windows 10/11** и **Linux / SteamOS (Proton / WiVRn)**. Добавляет в игру комплект из **трех ударных FPV-дронов камикадзе**, тактический пульт-планшет с цифровым экраном и телеметрией OSD, реалистичную физику полета, плавный оптический зум до 10x, наклон камеры вниз на 90° и полную интеграцию в оружейную комнату (Armory) и разгрузочный жилет оператора.
 
 ---
 
@@ -65,25 +66,37 @@
 ### Требования
 
 * Установленная через Steam игра **Tactical Assault VR**.
-* Установленный загрузчик модов **MelonLoader (v0.6.x или новее)** для Unity 6 / IL2CPP x64.
+* Установленный загрузчик модов **MelonLoader (v0.6.x или новее)** для Unity 6 / IL2CPP x64:
+  * [Официальный инсталлятор MelonLoader для Windows и Linux](https://github.com/LavaGang/MelonLoader.Installer/releases).
 
-### Автоматическая установка (Linux / Steam Deck)
+---
 
-1. Клонируйте репозиторий.
-2. Запустите скрипт установки:
-   ```bash
-   ./install.sh "/путь/к/Tactical Assault VR"
+### Установка на Windows
+
+#### Автоматическая (в 1 клик)
+1. Дважды кликните по файлу `install.bat` (или запустите `.\install.ps1` в PowerShell).
+2. Скрипт сам найдет установку игры на дисках `C:\`, `D:\` или `E:\`, соберет проект и скопирует файл `TacticalAssaultFPV.dll` в директорию `Tactical Assault VR\Mods\`.
+
+#### Ручная установка
+1. Скачайте файл `TacticalAssaultFPV.dll` из вкладки [Releases](https://github.com/dmitry/tactical-assault-fpv/releases).
+2. Скопируйте `TacticalAssaultFPV.dll` в папку:
    ```
-   *(Если путь не указан, скрипт использует стандартную директорию Steam)*.
+   C:\Program Files (x86)\Steam\steamapps\common\Tactical Assault VR\Mods\
+   ```
+3. Запустите игру обычным образом через Steam в VR! Никаких дополнительных параметров запуска на Windows вводить не требуется.
 
-### Ручная установка (Windows / Linux)
+---
 
-1. Установите MelonLoader в корневую папку игры Tactical Assault VR.
-2. Скачайте файл `TacticalAssaultFPV.dll` из вкладки [Releases](https://github.com/dmitry/tactical-assault-fpv/releases).
-3. Скопируйте `TacticalAssaultFPV.dll` в папку `Tactical Assault VR/Mods/`.
+### Установка на Linux / Steam Deck
 
-### Параметры запуска для Linux / Proton / Steam Deck
+#### Автоматическая установка
+Запустите скрипт установки в терминале:
+```bash
+./install.sh "/путь/к/Tactical Assault VR"
+```
+*(Если путь не указан, скрипт использует стандартную директорию Steam)*.
 
+#### Параметры запуска для Linux / Proton / WiVRn
 В библиотеке Steam нажмите правой кнопкой на **Tactical Assault VR** $\to$ **Свойства** $\to$ **Параметры запуска** и укажите:
 ```bash
 WINEDLLOVERRIDES="version=n,b" %command%
@@ -102,10 +115,13 @@ WINEDLLOVERRIDES="version=n,b" %command%
 ### Команды сборки и тестирования
 
 ```bash
-# Сборка Release DLL мода
+# Сборка на Windows (PowerShell / CMD)
+dotnet build src\TacticalAssaultFPV\TacticalAssaultFPV.csproj -c Release
+
+# Сборка на Linux / macOS (Bash)
 dotnet build src/TacticalAssaultFPV/TacticalAssaultFPV.csproj -c Release
 
-# Запуск полного набора из 219 стресс-тестов
+# Запуск полного набора из 219 стресс-тестов (Кроссплатформенно)
 dotnet run --project tests/TacticalAssaultFPV.StressTests/TacticalAssaultFPV.StressTests.csproj -c Release
 ```
 
@@ -133,8 +149,10 @@ dotnet run --project tests/TacticalAssaultFPV.StressTests/TacticalAssaultFPV.Str
 │   ├── TacticalAssaultFPV.StressTests/      # Автономный набор из 219 тестов
 │   ├── ChallengerM4/                        # Проверка на утечки памяти и сбои
 │   └── ChallengerM4R2/                      # Стресс-тесты динамики полета Монте-Карло
-├── install.sh                               # Скрипт автоматического развертывания
-├── uninstall.sh                             # Скрипт полного удаления мода
+├── install.bat / install.ps1                # Скрипты автоустановки на Windows
+├── install.sh                               # Скрипт автоматического развертывания на Linux
+├── uninstall.bat / uninstall.ps1            # Скрипты удаления на Windows
+├── uninstall.sh                             # Скрипт удаления на Linux
 └── LICENSE                                  # Лицензия MIT
 ```
 

@@ -8,8 +8,12 @@ on:
 
 jobs:
   test:
-    name: Run Empirical Stress Tests
-    runs-on: ubuntu-latest
+    name: Stress Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout code
@@ -20,5 +24,5 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Run Stress Tests
+      - name: Run Empirical Stress Tests
         run: dotnet run --project tests/TacticalAssaultFPV.StressTests/TacticalAssaultFPV.StressTests.csproj -c Release

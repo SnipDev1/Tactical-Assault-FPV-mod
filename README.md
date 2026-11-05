@@ -1,6 +1,7 @@
 # Tactical Assault FPV - Strike Drone Mod
 
 [![CI Test Suite](https://github.com/dmitry/tactical-assault-fpv/actions/workflows/ci.yml/badge.svg)](https://github.com/dmitry/tactical-assault-fpv/actions/workflows/ci.yml)
+[![Platform: Windows | Linux](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%28Steam%20Deck%29-0078D6)](https://store.steampowered.com/app/2314440/Tactical_Assault_VR/)
 [![.NET](https://img.shields.io/badge/.NET-6.0%20%7C%208.0-512BD4)](https://dotnet.microsoft.com/)
 [![MelonLoader](https://img.shields.io/badge/MelonLoader-0.6.x-brightgreen)](https://melonwiki.xyz/)
 [![Target Game](https://img.shields.io/badge/Game-Tactical%20Assault%20VR-blue)](https://store.steampowered.com/app/2314440/Tactical_Assault_VR/)
@@ -9,7 +10,7 @@
 
 [**Русская версия документации (Russian README)**](README_RU.md)
 
-A comprehensive, physically simulated **FPV Kamikaze Strike Drone Mod** for **Tactical Assault VR** (Unity 6 / IL2CPP x64). Seamlessly integrated into the game's armory, VR inventory sockets, and flight mechanics.
+A comprehensive, physically simulated **FPV Kamikaze Strike Drone Mod** for **Tactical Assault VR** (Unity 6 / IL2CPP x64). Fully compatible with **Windows 10/11** and **Linux / SteamOS (Proton / WiVRn)**. Seamlessly integrated into the game's armory, VR inventory sockets, and flight mechanics.
 
 ---
 
@@ -66,30 +67,42 @@ A comprehensive, physically simulated **FPV Kamikaze Strike Drone Mod** for **Ta
 ### Prerequisites
 
 * **Tactical Assault VR** installed via Steam.
-* **MelonLoader (v0.6.x or newer)** for Unity 6 / IL2CPP x64 games.
+* **MelonLoader (v0.6.x or newer)** for Unity 6 / IL2CPP x64 games:
+  * Windows / Linux Installer: [MelonLoader Releases](https://github.com/LavaGang/MelonLoader.Installer/releases).
 
-### Automated Installation (Linux / Steam Deck)
+---
 
-1. Clone or download this repository.
-2. Run the installation script:
-   ```bash
-   ./install.sh "/path/to/Tactical Assault VR"
+### Windows Installation
+
+#### Automated (1-Click)
+1. Double-click `install.bat` (or run `.\install.ps1` in PowerShell).
+2. The script will automatically locate your Steam installation (`C:\`, `D:\`, or `E:\` drive), compile the mod, and deploy `TacticalAssaultFPV.dll` into `Tactical Assault VR\Mods\`.
+
+#### Manual
+1. Download `TacticalAssaultFPV.dll` from the latest [Releases](https://github.com/dmitry/tactical-assault-fpv/releases).
+2. Copy `TacticalAssaultFPV.dll` into:
    ```
-   *(If omitted, defaults to standard Steam library location)*.
+   C:\Program Files (x86)\Steam\steamapps\common\Tactical Assault VR\Mods\
+   ```
+3. Start the game normally via Steam in VR!
 
-### Manual Installation (Windows / Linux)
+---
 
-1. Install MelonLoader into your Tactical Assault VR game directory.
-2. Download `TacticalAssaultFPV.dll` from the latest [Releases](https://github.com/dmitry/tactical-assault-fpv/releases).
-3. Place `TacticalAssaultFPV.dll` into the `Tactical Assault VR/Mods/` directory.
+### Linux / Steam Deck Installation
 
-### Linux / Proton / Steam Deck Launch Options
+#### Automated
+Run the installation script in terminal:
+```bash
+./install.sh "/path/to/Tactical Assault VR"
+```
+*(If omitted, defaults to standard Steam library location)*.
 
-In Steam, right-click **Tactical Assault VR** $\to$ **Properties** $\to$ **Launch Options** and enter:
+#### Linux / Proton / WiVRn Launch Options
+In your Steam Library, right-click **Tactical Assault VR** $\to$ **Properties** $\to$ **Launch Options**:
 ```bash
 WINEDLLOVERRIDES="version=n,b" %command%
 ```
-*(If running under WiVRn Flatpak, add `PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1 PRESSURE_VESSEL_FILESYSTEMS_RW=/var/lib/flatpak/app/io.github.wivrn.wivrn`)*.
+*(If running under WiVRn Flatpak, prepend: `PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1 PRESSURE_VESSEL_FILESYSTEMS_RW=/var/lib/flatpak/app/io.github.wivrn.wivrn`)*.
 
 ---
 
@@ -97,16 +110,19 @@ WINEDLLOVERRIDES="version=n,b" %command%
 
 ### Requirements
 
-* [.NET 6.0 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) (for the mod assembly)
+* [.NET 6.0 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) (for compiling the mod)
 * [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (for the standalone stress test suite)
 
 ### Build Commands
 
 ```bash
-# Build the mod assembly
+# Windows (PowerShell / Command Prompt)
+dotnet build src\TacticalAssaultFPV\TacticalAssaultFPV.csproj -c Release
+
+# Linux / macOS (Bash)
 dotnet build src/TacticalAssaultFPV/TacticalAssaultFPV.csproj -c Release
 
-# Run the 219 empirical stress tests
+# Run the 219 empirical stress tests (Cross-Platform)
 dotnet run --project tests/TacticalAssaultFPV.StressTests/TacticalAssaultFPV.StressTests.csproj -c Release
 ```
 
@@ -134,8 +150,10 @@ dotnet run --project tests/TacticalAssaultFPV.StressTests/TacticalAssaultFPV.Str
 │   ├── TacticalAssaultFPV.StressTests/      # Standalone 219-test empirical verification suite
 │   ├── ChallengerM4/                        # Adversarial memory leak & exception stress tests
 │   └── ChallengerM4R2/                      # Monte Carlo flight dynamics & permutation tests
+├── install.bat / install.ps1                # Windows automated deployment scripts
 ├── install.sh                               # Linux automated deployment script
-├── uninstall.sh                             # Vanilla rollback script
+├── uninstall.bat / uninstall.ps1            # Windows rollback scripts
+├── uninstall.sh                             # Linux rollback script
 └── LICENSE                                  # MIT License
 ```
 
@@ -143,7 +161,7 @@ dotnet run --project tests/TacticalAssaultFPV.StressTests/TacticalAssaultFPV.Str
 
 ## Testing & Quality Assurance
 
-The codebase includes an empirical stress test suite verifying:
+The codebase includes an empirical stress test suite continuously verified on both **Windows** and **Ubuntu** via GitHub Actions:
 - **219 automated unit & regression tests** covering flight math, quaternion orientation, continuous altitude hold, optical zoom, aspect ratios, and boundary conditions.
 - **500,000 Monte Carlo iterations** validating multi-drone switching permutations and zero flakiness.
 - **Zero dynamic memory leaks** during repetitive scene transitions and drone detonations.

@@ -10,85 +10,96 @@
     <OutputPath>../../bin/$(Configuration)/</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
-    <!-- Deployment Paths -->
+    <!-- Deployment Paths (Cross-Platform Windows / Linux) -->
+    <GameDir Condition="'$(GameDir)' == '' And '$([MSBuild]::IsOSPlatform(&quot;Windows&quot;))'">C:\Program Files (x86)\Steam\steamapps\common\Tactical Assault VR</GameDir>
+    <GameDir Condition="'$(GameDir)' == '' And '$([MSBuild]::IsOSPlatform(&quot;Windows&quot;))' And !Exists('$(GameDir)') And Exists('D:\SteamLibrary\steamapps\common\Tactical Assault VR')">D:\SteamLibrary\steamapps\common\Tactical Assault VR</GameDir>
     <GameDir Condition="'$(GameDir)' == ''">/mnt/olddisk/SteamLibrary/steamapps/common/Tactical Assault VR</GameDir>
     <GameModsPath Condition="'$(GameModsPath)' == ''">$(GameDir)/Mods</GameModsPath>
+
+    <!-- Reference Fallback Paths (Local workspace tools/interop or installed Game MelonLoader) -->
+    <MelonNet6Path Condition="Exists('../../tools/melonloader/MelonLoader/net6/MelonLoader.dll')">../../tools/melonloader/MelonLoader/net6</MelonNet6Path>
+    <MelonNet6Path Condition="'$(MelonNet6Path)' == '' And Exists('$(GameDir)/MelonLoader/net6/MelonLoader.dll')">$(GameDir)/MelonLoader/net6</MelonNet6Path>
+    <MelonNet6Path Condition="'$(MelonNet6Path)' == ''">../../tools/melonloader/MelonLoader/net6</MelonNet6Path>
+
+    <InteropPath Condition="Exists('../../interop/Assembly-CSharp.dll')">../../interop</InteropPath>
+    <InteropPath Condition="'$(InteropPath)' == '' And Exists('$(GameDir)/MelonLoader/Il2CppAssemblies/Assembly-CSharp.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies</InteropPath>
+    <InteropPath Condition="'$(InteropPath)' == ''">../../interop</InteropPath>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- MelonLoader references -->
     <Reference Include="MelonLoader">
-      <HintPath>../../tools/melonloader/MelonLoader/net6/MelonLoader.dll</HintPath>
+      <HintPath>$(MelonNet6Path)/MelonLoader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>../../tools/melonloader/MelonLoader/net6/0Harmony.dll</HintPath>
+      <HintPath>$(MelonNet6Path)/0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Il2CppInterop.Runtime">
-      <HintPath>../../tools/melonloader/MelonLoader/net6/Il2CppInterop.Runtime.dll</HintPath>
+      <HintPath>$(MelonNet6Path)/Il2CppInterop.Runtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
 
     <!-- Interop game assemblies -->
     <Reference Include="Il2Cppmscorlib">
-      <HintPath>../../interop/Il2Cppmscorlib.dll</HintPath>
+      <HintPath>$(InteropPath)/Il2Cppmscorlib.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>../../interop/UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
-      <HintPath>../../interop/UnityEngine.PhysicsModule.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.PhysicsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.AudioModule">
-      <HintPath>../../interop/UnityEngine.AudioModule.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.AudioModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>../../interop/UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">
-      <HintPath>../../interop/UnityEngine.TextRenderingModule.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.TextRenderingModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>../../interop/UnityEngine.UI.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.UI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.ParticleSystemModule">
-      <HintPath>../../interop/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.ParticleSystemModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.AssetBundleModule">
-      <HintPath>../../interop/UnityEngine.AssetBundleModule.dll</HintPath>
+      <HintPath>$(InteropPath)/UnityEngine.AssetBundleModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PhotonUnityNetworking">
-      <HintPath>../../interop/PhotonUnityNetworking.dll</HintPath>
+      <HintPath>$(InteropPath)/PhotonUnityNetworking.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PhotonRealtime">
-      <HintPath>../../interop/PhotonRealtime.dll</HintPath>
+      <HintPath>$(InteropPath)/PhotonRealtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Il2CppPhotonUnityNetworking">
-      <HintPath>../../interop/Il2CppPhotonUnityNetworking.dll</HintPath>
+      <HintPath>$(InteropPath)/Il2CppPhotonUnityNetworking.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Il2CppPhotonRealtime">
-      <HintPath>../../interop/Il2CppPhotonRealtime.dll</HintPath>
+      <HintPath>$(InteropPath)/Il2CppPhotonRealtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>../../interop/Assembly-CSharp.dll</HintPath>
+      <HintPath>$(InteropPath)/Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Il2CppHurricaneVR.Framework">
-      <HintPath>../../interop/Il2CppHurricaneVR.Framework.dll</HintPath>
+      <HintPath>$(InteropPath)/Il2CppHurricaneVR.Framework.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
