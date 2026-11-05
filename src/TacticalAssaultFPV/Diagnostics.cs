@@ -290,9 +290,9 @@ public static class Diagnostics
                                  Mathf.Approximately(tiltedUp, initialTilt + 15f) &&
                                  Mathf.Approximately(tiltedDown, initialTilt - 20f) &&
                                  Mathf.Approximately(clampedMax, 75f) &&
-                                 Mathf.Approximately(clampedMin, -15f);
+                                 Mathf.Approximately(clampedMin, -90f);
 
-            Assert(tiltMathValid, "Camera Tilt Range [-15, 75] & Clamping",
+            Assert(tiltMathValid, "Camera Tilt Range [-90, 75] & Clamping",
                    $"Init={initialTilt}, Up={tiltedUp}, Down={tiltedDown}, Min={clampedMin}, Max={clampedMax}",
                    ref passed, ref failed);
         }

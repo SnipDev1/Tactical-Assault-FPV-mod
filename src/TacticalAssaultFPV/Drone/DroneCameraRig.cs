@@ -16,33 +16,37 @@ public class DroneCameraRig : MonoBehaviour
     public float CurrentTiltAngle { get; private set; } = ModConfig.CameraTiltAngleDeg;
     public bool IsStreaming => _cam != null && _cam.enabled;
 
+    public const float MinZoom = 1.0f;
+    public const float MaxZoom = 10.0f;
     private const float BaseFov = 115f;
-    private int _zoomLevelIndex = 0; // 0: 1.0x, 1: 2.0x, 2: 4.0x
-    private static readonly float[] _zoomLevels = new float[] { 1.0f, 2.0f, 4.0f };
 
-    public float CurrentZoom => _zoomLevels[_zoomLevelIndex];
+    public float CurrentZoom { get; private set; } = 1.0f;
 
-    public void ZoomIn()
+    public void AdjustZoom(float delta)
     {
-        if (_zoomLevelIndex < _zoomLevels.Length - 1)
-        {
-            _zoomLevelIndex++;
-            ApplyZoom();
-        }
+        CurrentZoom = Mathf.Clamp(CurrentZoom + delta, MinZoom, MaxZoom);
+        ApplyZoom();
     }
 
-    public void ZoomOut()
+    public void ZoomIn(float step = 0.5f)
     {
-        if (_zoomLevelIndex > 0)
-        {
-            _zoomLevelIndex--;
-            ApplyZoom();
-        }
+        AdjustZoom(step);
+    }
+
+    public void ZoomOut(float step = 0.5f)
+    {
+        AdjustZoom(-step);
+    }
+
+    public void SetZoom(float zoom)
+    {
+        CurrentZoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
+        ApplyZoom();
     }
 
     public void ResetZoom()
     {
-        _zoomLevelIndex = 0;
+        CurrentZoom = 1.0f;
         ApplyZoom();
     }
 
@@ -94,7 +98,7 @@ public class DroneCameraRig : MonoBehaviour
 
     public void AdjustTilt(float deltaDegrees)
     {
-        CurrentTiltAngle = Mathf.Clamp(CurrentTiltAngle + deltaDegrees, -15f, 75f);
+        CurrentTiltAngle = Mathf.Clamp(CurrentTiltAngle + deltaDegrees, -90f, 75f);
         if (_camObj != null)
         {
             _camObj.transform.localRotation = Quaternion.Euler(-CurrentTiltAngle, 0f, 0f);

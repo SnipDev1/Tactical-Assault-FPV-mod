@@ -944,10 +944,10 @@ public class Program
 
         // 8.1 Tilt Angle Clamping Across Extreme Inputs [-1000, 1000]
         float tilt = 28f;
-        float ClampTilt(float current, float delta) => Math.Clamp(current + delta, -15f, 75f);
+        float ClampTilt(float current, float delta) => Math.Clamp(current + delta, -90f, 75f);
 
         Assert(ClampTilt(tilt, 1000f) == 75f, "Camera Tilt +1000 Deg Clamped to Exactly 75.0 Deg");
-        Assert(ClampTilt(tilt, -1000f) == -15f, "Camera Tilt -1000 Deg Clamped to Exactly -15.0 Deg");
+        Assert(ClampTilt(tilt, -1000f) == -90f, "Camera Tilt -1000 Deg Clamped to Exactly -90.0 Deg");
         Assert(ClampTilt(tilt, 0f) == 28f, "Camera Tilt +0 Deg Remains Exact Default 28.0 Deg");
 
         // 8.2 Powers of 2 Resolution Sweep
@@ -2429,7 +2429,7 @@ public class Program
         bool streamedOff = !streaming;
 
         float tilt = 28.0f;
-        void AdjustTilt(float delta) { tilt = Math.Clamp(tilt + delta, -15.0f, 75.0f); }
+        void AdjustTilt(float delta) { tilt = Math.Clamp(tilt + delta, -90.0f, 75.0f); }
         AdjustTilt(15f);
         float tiltUp = tilt; // 43
         AdjustTilt(-35f);
@@ -2437,13 +2437,13 @@ public class Program
         AdjustTilt(200f);
         float tiltMax = tilt; // 75
         AdjustTilt(-300f);
-        float tiltMin = tilt; // -15
+        float tiltMin = tilt; // -90
 
         bool cameraPropsValid = (fov == 115f) && (Math.Abs(camAspect - 1.6f) < 1e-5) &&
                                 (rtWidth == 512 && rtHeight == 320) && camDefaultDisabled &&
                                 streamedOn && streamedOff &&
-                                (tiltUp == 43f) && (tiltDown == 8f) && (tiltMax == 75f) && (tiltMin == -15f);
-        Assert(cameraPropsValid, "Pass 3: DroneCameraRig FOV 115°, Aspect 1.6 (16:10), 512x320 RT, Stream Toggle & [-15, 75] Tilt");
+                                (tiltUp == 43f) && (tiltDown == 8f) && (tiltMax == 75f) && (tiltMin == -90f);
+        Assert(cameraPropsValid, "Pass 3: DroneCameraRig FOV 115°, Aspect 1.6 (16:10), 512x320 RT, Stream Toggle & [-90, 75] Tilt");
 
         // Pass 4: DronePhysics Subsystem Verification
         float droneMass = 1.2f;
@@ -2683,14 +2683,14 @@ public class Program
         bool allTiltsClamped = true;
         foreach (var delta in extremeDeltas)
         {
-            testTilt = Math.Clamp(28.0f + delta, -15.0f, 75.0f);
-            if (testTilt < -15.0f || testTilt > 75.0f)
+            testTilt = Math.Clamp(28.0f + delta, -90.0f, 75.0f);
+            if (testTilt < -90.0f || testTilt > 75.0f)
             {
                 allTiltsClamped = false;
                 break;
             }
         }
-        Assert(allTiltsClamped, "Adversarial Tilt: Extreme Deltas (+/- 10^9 deg) Strictly Clamped Within [-15.0, 75.0] Deg");
+        Assert(allTiltsClamped, "Adversarial Tilt: Extreme Deltas (+/- 10^9 deg) Strictly Clamped Within [-90.0, 75.0] Deg");
 
         // 25.5 Audio Sample Counts & Boundary Pop Elimination
         // Testing non-integer sample durations: 44000 samples @ 44100Hz
@@ -2765,14 +2765,14 @@ public class Program
         for (int i = 0; i < 100_000; i++)
         {
             float delta = (float)(rng.NextDouble() * 1000.0 - 500.0);
-            currentTilt = Math.Clamp(currentTilt + delta, -15.0f, 75.0f);
-            if (currentTilt < -15.0f || currentTilt > 75.0f)
+            currentTilt = Math.Clamp(currentTilt + delta, -90.0f, 75.0f);
+            if (currentTilt < -90.0f || currentTilt > 75.0f)
             {
                 allTiltClampsValid = false;
                 break;
             }
         }
-        Assert(allTiltClampsValid, "100,000 Cycles Camera Tilt: Strict Invariant -15.0° <= Tilt <= 75.0° Preserved (0 Flakiness)");
+        Assert(allTiltClampsValid, "100,000 Cycles Camera Tilt: Strict Invariant -90.0° <= Tilt <= 75.0° Preserved (0 Flakiness)");
 
         // 26.3 100,000 Cycles Hover Restoring Force Calculations
         bool allHoverForcesValid = true;
@@ -2943,31 +2943,40 @@ public class Program
         }
         Assert(!mockControlMode && !mockDroneIsArmed, "Second button press while in control mode disarms motors as intended");
 
-        // 28.3 Controller Button Separation & Camera Step Zoom Math
+        // 28.3 Controller Button Separation & Camera Smooth Continuous Zoom Math (up to 10.0x)
         float baseFov = 115f;
-        float[] zoomLevels = { 1.0f, 2.0f, 4.0f };
-        int zoomIndex = 0;
+        float currentZoom = 1.0f;
+        const float minZoom = 1.0f;
+        const float maxZoom = 10.0f;
 
-        void ZoomIn() { if (zoomIndex < zoomLevels.Length - 1) zoomIndex++; }
-        void ZoomOut() { if (zoomIndex > 0) zoomIndex--; }
+        void AdjustZoom(float delta) { currentZoom = Math.Clamp(currentZoom + delta, minZoom, maxZoom); }
 
-        Assert(zoomLevels[zoomIndex] == 1.0f && (baseFov / zoomLevels[zoomIndex]) == 115f, "Default Zoom is 1.0x (115° FOV)");
-        ZoomIn();
-        Assert(zoomLevels[zoomIndex] == 2.0f && (baseFov / zoomLevels[zoomIndex]) == 57.5f, "Zoom In step 1: 2.0x (57.5° FOV)");
-        ZoomIn();
-        Assert(zoomLevels[zoomIndex] == 4.0f && (baseFov / zoomLevels[zoomIndex]) == 28.75f, "Zoom In step 2: 4.0x (28.75° FOV)");
-        ZoomIn(); // Clamp
-        Assert(zoomLevels[zoomIndex] == 4.0f, "Zoom In clamped at maximum 4.0x");
-        ZoomOut();
-        Assert(zoomLevels[zoomIndex] == 2.0f, "Zoom Out step 1 returns to 2.0x");
-        ZoomOut();
-        Assert(zoomLevels[zoomIndex] == 1.0f, "Zoom Out step 2 returns to 1.0x");
-        ZoomOut(); // Clamp
-        Assert(zoomLevels[zoomIndex] == 1.0f, "Zoom Out clamped at minimum 1.0x");
+        Assert(currentZoom == 1.0f && (baseFov / currentZoom) == 115f, "Default Zoom is 1.0x (115° FOV)");
 
-        // 28.4 OSD Telemetry Zoom Formatting
-        string osdTelemetryLine = $"CAM {28f:F0}° [{zoomLevels[zoomIndex]:F1}X]  ALT {1.2f:F1}M  SPD {0.0f:F1}M/S    [R-STICK]";
-        Assert(osdTelemetryLine.Contains("[1.0X]"), "OSD bottom telemetry line contains current zoom level indicator '[1.0X]'");
+        // Continuous smooth zoom in simulation over 50 frames
+        for (int frame = 0; frame < 50; frame++)
+        {
+            AdjustZoom(0.18f); // 50 * 0.18 = +9.0 -> from 1.0x to 10.0x
+        }
+        Assert(currentZoom == 10.0f, "Continuous smooth zoom reaches exact 10.0x maximum telephoto limit");
+        Assert(Math.Abs((baseFov / currentZoom) - 11.5f) < 1e-4f, "10.0x zoom delivers precise 11.5° telephoto FOV");
+
+        AdjustZoom(5.0f); // Attempt to exceed clamp
+        Assert(currentZoom == 10.0f, "Smooth Zoom In strictly clamped at maximum 10.0x");
+
+        AdjustZoom(-4.5f);
+        Assert(Math.Abs(currentZoom - 5.5f) < 1e-4f, "Smooth Zoom Out dynamically stops at arbitrary float level (5.5x)");
+
+        AdjustZoom(-10.0f); // Attempt to fall below minimum
+        Assert(currentZoom == 1.0f, "Smooth Zoom Out strictly clamped at minimum 1.0x");
+
+        // 28.4 OSD Telemetry Zoom Formatting (Continuous values)
+        string osdTelemetryLine1 = $"CAM {28f:F0}° [{1.0f:F1}X]  ALT {1.2f:F1}M  SPD {0.0f:F1}M/S    [R-STICK]";
+        string osdTelemetryLine5 = $"CAM {28f:F0}° [{5.5f:F1}X]  ALT {1.2f:F1}M  SPD {0.0f:F1}M/S    [R-STICK]";
+        string osdTelemetryLine10 = $"CAM {28f:F0}° [{10.0f:F1}X]  ALT {1.2f:F1}M  SPD {0.0f:F1}M/S    [R-STICK]";
+        Assert(osdTelemetryLine1.Contains("[1.0X]"), "OSD telemetry displays baseline '[1.0X]'");
+        Assert(osdTelemetryLine5.Contains("[5.5X]"), "OSD telemetry displays intermediate '[5.5X]'");
+        Assert(osdTelemetryLine10.Contains("[10.0X]"), "OSD telemetry displays maximum '[10.0X]'");
 
         // 28.5 Physical Drone 0.8x Scale Verification
         Vector3 baseColSize = new Vector3(0.28f, 0.08f, 0.28f);
@@ -3016,6 +3025,30 @@ public class Program
         Assert(rawBlastImpulse <= 100.0f, "Drone explosion blast impulse dampened to <= 100 Ns (90 Ns actual)");
         Assert(upwardsModifier <= 0.2f, "Explosion upward lift modifier reduced to <= 0.2 (0.15 actual)");
         Assert(deltaV < 2.0f, $"Humanoid ragdoll launch delta-V reduced to gentle knockdown ({deltaV:F2} m/s vs prior 8.75 m/s)");
+
+        // 28.9 Full 90° Downward Camera Tilt (Nadir View) Verification
+        float camTiltRangeMin = -90.0f;
+        float camTiltRangeMax = 75.0f;
+        float testNadirTilt = Math.Clamp(28.0f - 200.0f, camTiltRangeMin, camTiltRangeMax);
+        Assert(testNadirTilt == -90.0f, "Camera tilt down clamped at exactly -90.0° (full downward nadir capability)");
+
+        // Local rotation at -90° tilt is Euler(-(-90), 0, 0) = Euler(90, 0, 0)
+        // Vector3.forward (0, 0, 1) rotated +90° around X axis:
+        // Y' = cos(90)*0 - sin(90)*1 = -1
+        // Z' = sin(90)*0 + cos(90)*1 = 0
+        // Direction vector = (0, -1, 0) -> Vector3.down!
+        float angleRad = 90.0f * (MathF.PI / 180.0f);
+        Vector3 forwardVec = new Vector3(0f, 0f, 1f);
+        Vector3 rotatedForward = new Vector3(
+            forwardVec.X,
+            forwardVec.Y * MathF.Cos(angleRad) - forwardVec.Z * MathF.Sin(angleRad),
+            forwardVec.Y * MathF.Sin(angleRad) + forwardVec.Z * MathF.Cos(angleRad)
+        );
+        Assert(MathF.Abs(rotatedForward.X) < 1e-5f && MathF.Abs(rotatedForward.Y - (-1.0f)) < 1e-5f && MathF.Abs(rotatedForward.Z) < 1e-5f,
+            "Camera at -90° tilt aligns precisely with ground nadir vector (0, -1, 0)");
+
+        string nadirOsdLine = $"CAM {testNadirTilt:F0}° [{1.0f:F1}X]  ALT {1.2f:F1}M  SPD {0.0f:F1}M/S    [R-STICK]";
+        Assert(nadirOsdLine.Contains("CAM -90°"), "OSD telemetry displays 'CAM -90°' when looking straight down");
     }
 
     #endregion

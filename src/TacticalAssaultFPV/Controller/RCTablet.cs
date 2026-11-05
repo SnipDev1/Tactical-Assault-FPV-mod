@@ -575,9 +575,9 @@ public class RCTablet : MonoBehaviour
         bool flightControlToggle = (left != null && left.PrimaryButtonState.JustActivated);
         bool warheadToggle = (left != null && left.SecondaryButtonState.JustActivated);
 
-        // Right Controller: Step Zoom In (A) & Step Zoom Out (B)
-        bool zoomInPressed = (right != null && right.PrimaryButtonState.JustActivated);
-        bool zoomOutPressed = (right != null && right.SecondaryButtonState.JustActivated);
+        // Right Controller: Smooth Zoom In (A) & Smooth Zoom Out (B) up to 10.0x
+        bool zoomInHeld = (right != null) && (right.PrimaryButton || right.PrimaryButtonState.Active);
+        bool zoomOutHeld = (right != null) && (right.SecondaryButton || right.SecondaryButtonState.Active);
 
         if (flightControlToggle && _pairedDronePhysics != null)
         {
@@ -615,25 +615,25 @@ public class RCTablet : MonoBehaviour
             MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button Y Pressed: Drone #{_currentDroneIndex + 1} Warhead Armed = {_isWarheadArmed}");
         }
 
-        // Right Controller Zoom Controls (A = Zoom In, B = Zoom Out: 1.0x -> 2.0x -> 4.0x -> ...)
-        if (zoomInPressed && _pairedDroneCamera != null)
+        // Right Controller Smooth Continuous Zoom (Hold A = Zoom In, Hold B = Zoom Out: 1.0x <-> 10.0x)
+        if (zoomInHeld && _pairedDroneCamera != null)
         {
-            _pairedDroneCamera.ZoomIn();
-            MelonLoader.MelonLogger.Msg($"[RCTablet] Right Button A Pressed -> Zoom In: {_pairedDroneCamera.CurrentZoom:F1}X");
+            const float zoomSpeed = 3.5f; // Zoom units per second (smoothly traverses 1.0x -> 10.0x in ~2.5s)
+            _pairedDroneCamera.AdjustZoom(zoomSpeed * Time.deltaTime);
         }
-        if (zoomOutPressed && _pairedDroneCamera != null)
+        else if (zoomOutHeld && _pairedDroneCamera != null)
         {
-            _pairedDroneCamera.ZoomOut();
-            MelonLoader.MelonLogger.Msg($"[RCTablet] Right Button B Pressed -> Zoom Out: {_pairedDroneCamera.CurrentZoom:F1}X");
+            const float zoomSpeed = 3.5f;
+            _pairedDroneCamera.AdjustZoom(-zoomSpeed * Time.deltaTime);
         }
 
-        // Camera Tilt Adjust (Left Trigger = Tilt Down, Right Trigger = Tilt Up)
+        // Camera Tilt Adjust (Left Trigger = Tilt Down up to 90°, Right Trigger = Tilt Up)
         if (_pairedDroneCamera != null)
         {
             float lt = left != null ? left.Trigger : 0f;
             float rt = right != null ? right.Trigger : 0f;
             const float deadzone = 0.15f;
-            const float tiltSpeed = 35f; // degrees per second at full trigger pull
+            const float tiltSpeed = 45f; // degrees per second at full trigger pull
 
             if (rt > deadzone)
             {
