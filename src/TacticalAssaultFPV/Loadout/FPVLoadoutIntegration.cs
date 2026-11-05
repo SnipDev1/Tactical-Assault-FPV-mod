@@ -917,7 +917,9 @@ public static class FPVLoadoutIntegration
                 {
                     if (s == null) continue;
                     string name = s.gameObject.name.ToLower();
-                    if (name.Contains("utility") || name.Contains("grenade") || name.Contains("holster") || name.Contains("pouch"))
+                    // STRICT FILTER: Only target grenade/utility pouches! 
+                    // NEVER wipe filters on weapon holsters (pistol, rifle, secondary, etc.)!
+                    if (name.Contains("utility") || name.Contains("grenade") || name.StartsWith("utilityholstersocket"))
                     {
                         PrepareSocketForGrabbable(s);
                     }

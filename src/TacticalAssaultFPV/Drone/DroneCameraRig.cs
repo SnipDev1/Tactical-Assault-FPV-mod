@@ -16,6 +16,44 @@ public class DroneCameraRig : MonoBehaviour
     public float CurrentTiltAngle { get; private set; } = ModConfig.CameraTiltAngleDeg;
     public bool IsStreaming => _cam != null && _cam.enabled;
 
+    private const float BaseFov = 115f;
+    private int _zoomLevelIndex = 0; // 0: 1.0x, 1: 2.0x, 2: 4.0x
+    private static readonly float[] _zoomLevels = new float[] { 1.0f, 2.0f, 4.0f };
+
+    public float CurrentZoom => _zoomLevels[_zoomLevelIndex];
+
+    public void ZoomIn()
+    {
+        if (_zoomLevelIndex < _zoomLevels.Length - 1)
+        {
+            _zoomLevelIndex++;
+            ApplyZoom();
+        }
+    }
+
+    public void ZoomOut()
+    {
+        if (_zoomLevelIndex > 0)
+        {
+            _zoomLevelIndex--;
+            ApplyZoom();
+        }
+    }
+
+    public void ResetZoom()
+    {
+        _zoomLevelIndex = 0;
+        ApplyZoom();
+    }
+
+    private void ApplyZoom()
+    {
+        if (_cam != null)
+        {
+            _cam.fieldOfView = BaseFov / CurrentZoom;
+        }
+    }
+
     public void Awake()
     {
         _camObj = new GameObject("FPV_Camera");
@@ -24,7 +62,7 @@ public class DroneCameraRig : MonoBehaviour
         _camObj.transform.localRotation = Quaternion.Euler(-CurrentTiltAngle, 0f, 0f);
 
         _cam = _camObj.AddComponent<Camera>();
-        _cam.fieldOfView = 115f;
+        _cam.fieldOfView = BaseFov / CurrentZoom;
         _cam.nearClipPlane = 0.05f;
         _cam.farClipPlane = 1000f;
         _cam.depth = -10;

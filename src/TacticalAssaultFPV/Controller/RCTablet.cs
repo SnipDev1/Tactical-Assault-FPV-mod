@@ -453,7 +453,7 @@ public class RCTablet : MonoBehaviour
             {
                 if (s == null || s.GrabbedTarget != null) continue;
                 string sName = s.gameObject.name.ToLower();
-                if (sName.Contains("utility") || sName.Contains("grenade") || sName.Contains("holster") || sName.Contains("pouch"))
+                if (sName.Contains("utility") || sName.Contains("grenade") || sName.StartsWith("utilityholstersocket"))
                 {
                     float d = Vector3.Distance(tabletPos, s.transform.position);
                     if (d < bestDist)
@@ -571,41 +571,60 @@ public class RCTablet : MonoBehaviour
                            ?? HVRInputManager.Instance?.RightController 
                            ?? HVRInputManager.Instance?.RightXRInputController;
 
-        // Button 1: Toggle Drone Flight Control Mode & Flight Motors (Primary Button: X on Left / A on Right)
-        bool button1Pressed = false;
-        if (left != null && left.PrimaryButtonState.JustActivated) button1Pressed = true;
-        if (right != null && right.PrimaryButtonState.JustActivated) button1Pressed = true;
+        // Left Controller: Flight Activation (X) & Warhead Armed Toggle (Y)
+        bool flightControlToggle = (left != null && left.PrimaryButtonState.JustActivated);
+        bool warheadToggle = (left != null && left.SecondaryButtonState.JustActivated);
 
-        if (button1Pressed && _pairedDronePhysics != null)
+        // Right Controller: Step Zoom In (A) & Step Zoom Out (B)
+        bool zoomInPressed = (right != null && right.PrimaryButtonState.JustActivated);
+        bool zoomOutPressed = (right != null && right.SecondaryButtonState.JustActivated);
+
+        if (flightControlToggle && _pairedDronePhysics != null)
         {
-            bool newFlightState = !_pairedDronePhysics.IsArmed;
-            _pairedDronePhysics.SetArmed(newFlightState);
-            _isControlMode = newFlightState;
-            IsPlayerFrozen = _isControlMode;
-
-            MelonLoader.MelonLogger.Msg($"[RCTablet] Button 1 Pressed: Flight Armed = {_isControlMode}, LocomotionFrozen = {IsPlayerFrozen}");
-
             if (!_isControlMode)
             {
+                // Resume / enter control mode. If drone was hovering/disarmed, ensure it is armed and flying!
+                if (!_pairedDronePhysics.IsArmed)
+                {
+                    _pairedDronePhysics.SetArmed(true);
+                }
+                _isControlMode = true;
+                IsPlayerFrozen = true;
+                MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button X Pressed -> Resumed Drone Flight Control (Armed=True, LocomotionFrozen=True)");
+            }
+            else
+            {
+                // Actively controlling -> disarm flight motors and exit control mode
+                _pairedDronePhysics.SetArmed(false);
+                _isControlMode = false;
+                IsPlayerFrozen = false;
                 UnfreezePlayerMovement();
                 _pairedDronePhysics.ClimbInput = 0f;
                 _pairedDronePhysics.YawInput = 0f;
                 _pairedDronePhysics.PitchInput = 0f;
                 _pairedDronePhysics.RollInput = 0f;
+                MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button X Pressed -> Disarmed Drone & Exited Control Mode");
             }
         }
 
-        // Button 2: Toggle Warhead Armed/Safe on CURRENT active drone (Secondary Button: Y on Left / B on Right)
-        bool button2Pressed = false;
-        if (left != null && left.SecondaryButtonState.JustActivated) button2Pressed = true;
-        if (right != null && right.SecondaryButtonState.JustActivated) button2Pressed = true;
-
-        if (button2Pressed && _pairedDroneExplosive != null)
+        if (warheadToggle && _pairedDroneExplosive != null)
         {
             bool newWarheadState = !_pairedDroneExplosive.IsArmed;
             _pairedDroneExplosive.SetArmed(newWarheadState);
             _isWarheadArmed = newWarheadState;
-            MelonLoader.MelonLogger.Msg($"[RCTablet] Button 2 Pressed: Drone #{_currentDroneIndex + 1} Warhead Armed = {_isWarheadArmed}");
+            MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button Y Pressed: Drone #{_currentDroneIndex + 1} Warhead Armed = {_isWarheadArmed}");
+        }
+
+        // Right Controller Zoom Controls (A = Zoom In, B = Zoom Out: 1.0x -> 2.0x -> 4.0x -> ...)
+        if (zoomInPressed && _pairedDroneCamera != null)
+        {
+            _pairedDroneCamera.ZoomIn();
+            MelonLoader.MelonLogger.Msg($"[RCTablet] Right Button A Pressed -> Zoom In: {_pairedDroneCamera.CurrentZoom:F1}X");
+        }
+        if (zoomOutPressed && _pairedDroneCamera != null)
+        {
+            _pairedDroneCamera.ZoomOut();
+            MelonLoader.MelonLogger.Msg($"[RCTablet] Right Button B Pressed -> Zoom Out: {_pairedDroneCamera.CurrentZoom:F1}X");
         }
 
         // Camera Tilt Adjust (Left Trigger = Tilt Down, Right Trigger = Tilt Up)
@@ -810,6 +829,7 @@ public class RCTablet : MonoBehaviour
         float altitude = _pairedDronePhysics.transform.position.y;
         float speed = _pairedDroneRigidbody != null ? _pairedDroneRigidbody.linearVelocity.magnitude : 0f;
         float camTilt = _pairedDroneCamera?.CurrentTiltAngle ?? 28f;
+        float zoom = _pairedDroneCamera?.CurrentZoom ?? 1.0f;
         float battery = (_pairedDronePhysics != null && _droneBatteries.TryGetValue(_pairedDronePhysics.gameObject, out float bat)) ? bat : _batteryVoltage;
 
         // Monospace-aligned Betaflight / DJI FPV style OSD layout:
@@ -818,7 +838,7 @@ public class RCTablet : MonoBehaviour
         string lineMid = warheadArmed 
             ? "    - - [ ! WARHEAD ARMED ! ] - -\n        - -  [ + ]  - -\n\n" 
             : "\n        - -  [ + ]  - -\n\n";
-        string lineBot = $"CAM {camTilt:F0}°     ALT {altitude:F1}M   SPD {speed:F1}M/S     [R-STICK]";
+        string lineBot = $"CAM {camTilt:F0}° [{zoom:F1}X]  ALT {altitude:F1}M  SPD {speed:F1}M/S    [R-STICK]";
 
         _osdText.text = lineTop + lineMid + lineBot;
     }

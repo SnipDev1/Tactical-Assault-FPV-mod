@@ -72,10 +72,10 @@ public static class DroneFactory
             }
         }
 
-        // Dedicated BoxCollider for the drone physical body
+        // Dedicated BoxCollider for the drone physical body (~0.8x compact strike drone scale)
         var rootCol = drone.AddComponent<BoxCollider>();
         rootCol.center = Vector3.zero;
-        rootCol.size = new Vector3(0.28f, 0.08f, 0.28f);
+        rootCol.size = new Vector3(0.224f, 0.064f, 0.224f);
 
         // 4. Attach custom visual FPV Drone model (visual only, strip primitive colliders)
         GameObject visualRoot = new GameObject("Drone_Visuals");
@@ -83,43 +83,43 @@ public static class DroneFactory
         visualRoot.transform.localPosition = Vector3.zero;
         visualRoot.transform.localRotation = Quaternion.identity;
 
-        // Frame body
+        // Frame body (scaled ~0.8x)
         GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
         body.name = "Frame_Body";
         body.transform.SetParent(visualRoot.transform, false);
-        body.transform.localScale = new Vector3(0.12f, 0.04f, 0.22f);
+        body.transform.localScale = new Vector3(0.096f, 0.032f, 0.176f);
         SetColor(body, new Color(0.15f, 0.15f, 0.15f));
         RemoveCollider(body);
 
-        // Arms
-        CreateArm(visualRoot.transform, new Vector3(0.10f, 0f, 0.10f), 45f);
-        CreateArm(visualRoot.transform, new Vector3(-0.10f, 0f, 0.10f), -45f);
-        CreateArm(visualRoot.transform, new Vector3(0.10f, 0f, -0.10f), 135f);
-        CreateArm(visualRoot.transform, new Vector3(-0.10f, 0f, -0.10f), -135f);
+        // Arms (scaled ~0.8x)
+        CreateArm(visualRoot.transform, new Vector3(0.08f, 0f, 0.08f), 45f);
+        CreateArm(visualRoot.transform, new Vector3(-0.08f, 0f, 0.08f), -45f);
+        CreateArm(visualRoot.transform, new Vector3(0.08f, 0f, -0.08f), 135f);
+        CreateArm(visualRoot.transform, new Vector3(-0.08f, 0f, -0.08f), -135f);
 
-        // Motors & Propellers
+        // Motors & Propellers (scaled ~0.8x frame with elongated propeller blades)
         Transform[] props = new Transform[4];
-        props[0] = CreateMotorAndProp(visualRoot.transform, new Vector3(0.14f, 0.02f, 0.14f));
-        props[1] = CreateMotorAndProp(visualRoot.transform, new Vector3(-0.14f, 0.02f, 0.14f));
-        props[2] = CreateMotorAndProp(visualRoot.transform, new Vector3(0.14f, 0.02f, -0.14f));
-        props[3] = CreateMotorAndProp(visualRoot.transform, new Vector3(-0.14f, 0.02f, -0.14f));
+        props[0] = CreateMotorAndProp(visualRoot.transform, new Vector3(0.112f, 0.016f, 0.112f));
+        props[1] = CreateMotorAndProp(visualRoot.transform, new Vector3(-0.112f, 0.016f, 0.112f));
+        props[2] = CreateMotorAndProp(visualRoot.transform, new Vector3(0.112f, 0.016f, -0.112f));
+        props[3] = CreateMotorAndProp(visualRoot.transform, new Vector3(-0.112f, 0.016f, -0.112f));
 
-        // Warhead payload (Contact RGD / Impact Grenade warhead)
+        // Warhead payload (Contact RGD / Impact Grenade warhead, scaled ~0.8x)
         GameObject warhead = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         warhead.name = "Warhead_Charge";
         warhead.transform.SetParent(visualRoot.transform, false);
-        warhead.transform.localPosition = new Vector3(0f, -0.04f, 0f);
+        warhead.transform.localPosition = new Vector3(0f, -0.032f, 0f);
         warhead.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        warhead.transform.localScale = new Vector3(0.06f, 0.10f, 0.06f);
+        warhead.transform.localScale = new Vector3(0.048f, 0.08f, 0.048f);
         SetColor(warhead, new Color(0.25f, 0.35f, 0.2f));
         RemoveCollider(warhead);
 
-        // Status Power LED (unlit dark until powered on by pilot trigger)
+        // Status Power LED (unlit dark until powered on by pilot trigger, scaled ~0.8x)
         GameObject led = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         led.name = "Status_LED";
         led.transform.SetParent(visualRoot.transform, false);
-        led.transform.localPosition = new Vector3(0f, 0.025f, 0.08f);
-        led.transform.localScale = new Vector3(0.02f, 0.02f, 0.02f);
+        led.transform.localPosition = new Vector3(0f, 0.02f, 0.064f);
+        led.transform.localScale = new Vector3(0.016f, 0.016f, 0.016f);
         SetColor(led, new Color(0.12f, 0.12f, 0.12f));
         RemoveCollider(led);
 
@@ -435,7 +435,7 @@ public static class DroneFactory
         arm.transform.SetParent(parent, false);
         arm.transform.localPosition = offset * 0.5f;
         arm.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
-        arm.transform.localScale = new Vector3(0.015f, 0.008f, 0.16f);
+        arm.transform.localScale = new Vector3(0.012f, 0.0064f, 0.13f);
         SetColor(arm, new Color(0.2f, 0.2f, 0.2f));
         RemoveCollider(arm);
     }
@@ -446,7 +446,7 @@ public static class DroneFactory
         motor.name = "Motor";
         motor.transform.SetParent(parent, false);
         motor.transform.localPosition = pos;
-        motor.transform.localScale = new Vector3(0.028f, 0.012f, 0.028f);
+        motor.transform.localScale = new Vector3(0.0224f, 0.0096f, 0.0224f);
         SetColor(motor, new Color(0.1f, 0.1f, 0.1f));
         RemoveCollider(motor);
 
@@ -454,7 +454,8 @@ public static class DroneFactory
         prop.name = "Propeller";
         prop.transform.SetParent(motor.transform, false);
         prop.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-        prop.transform.localScale = new Vector3(0.15f, 0.08f, 1.5f);
+        // Elongated propeller blades for aggressive 7-9" FPV appearance
+        prop.transform.localScale = new Vector3(0.14f, 0.06f, 2.4f);
         SetColor(prop, new Color(0.7f, 0.7f, 0.7f, 0.8f));
         RemoveCollider(prop);
 

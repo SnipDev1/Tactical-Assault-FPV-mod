@@ -353,11 +353,11 @@ public class DroneExplosive : MonoBehaviour
             }
             catch { }
 
-            // 3. Physical explosion impulse on rigidbodies
+            // 3. Physical explosion impulse on rigidbodies (tuned realistically to prevent cartoon ragdoll launching)
             var rb = col.attachedRigidbody;
             if (rb != null && !rb.isKinematic)
             {
-                rb.AddExplosionForce(700f, pos, explosionRadius, 1.0f, ForceMode.Impulse);
+                rb.AddExplosionForce(90f, pos, explosionRadius, 0.15f, ForceMode.Impulse);
             }
         }
     }

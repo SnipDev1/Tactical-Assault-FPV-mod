@@ -330,33 +330,28 @@ public class DronePhysics : MonoBehaviour
         float vy = _rb.linearVelocity.y;
         float y = transform.position.y;
 
+        if (!_hasHoldAltitude)
+        {
+            _holdAltitude = y;
+            _hasHoldAltitude = true;
+        }
+
+        // Continuously integrate target altitude from climb stick input
+        // This eliminates discrete "stepped levels" and produces fluid, continuous vertical control!
         if (Mathf.Abs(ClimbInput) > 0.08f)
         {
-            _hasHoldAltitude = false;
-            float targetVy = ClimbInput > 0f ? ClimbInput * 3.5f : ClimbInput * 2.5f;
-            float error = targetVy - vy;
-            float verticalForce = _hoverThrust + (error * (_rb.mass * 8.0f));
-            verticalForce = Mathf.Clamp(verticalForce, 0f, _hoverThrust * 3.0f);
-            _lastAppliedVerticalForce = verticalForce;
-            _rb.AddForce(Vector3.up * verticalForce, ForceMode.Force);
+            float climbSpeed = ClimbInput > 0f ? 3.2f : 2.6f;
+            _holdAltitude += ClimbInput * climbSpeed * Time.fixedDeltaTime;
         }
-        else
-        {
-            if (!_hasHoldAltitude)
-            {
-                _holdAltitude = y;
-                _hasHoldAltitude = true;
-            }
 
-            // Altitude Hold (Loiter): active PD controller prevents altitude loss/gain when hovering
-            float altError = _holdAltitude - y;
-            float targetVy = Mathf.Clamp(altError * 3.5f, -2.5f, 2.5f);
-            float error = targetVy - vy;
-            float verticalForce = _hoverThrust + (error * (_rb.mass * 9.0f));
-            verticalForce = Mathf.Clamp(verticalForce, 0f, _hoverThrust * 3.0f);
-            _lastAppliedVerticalForce = verticalForce;
-            _rb.AddForce(Vector3.up * verticalForce, ForceMode.Force);
-        }
+        // Single continuous, smooth PD controller tracking _holdAltitude (no abrupt mode transitions!)
+        float altError = _holdAltitude - y;
+        float targetVy = Mathf.Clamp(altError * 3.2f, -3.0f, 3.5f);
+        float error = targetVy - vy;
+        float verticalForce = _hoverThrust + (error * (_rb.mass * 8.0f));
+        verticalForce = Mathf.Clamp(verticalForce, 0f, _hoverThrust * 3.0f);
+        _lastAppliedVerticalForce = verticalForce;
+        _rb.AddForce(Vector3.up * verticalForce, ForceMode.Force);
     }
 
     private void ApplyAttitudeAndYaw()
