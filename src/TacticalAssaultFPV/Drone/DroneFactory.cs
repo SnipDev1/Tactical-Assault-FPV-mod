@@ -167,6 +167,7 @@ public static class DroneFactory
             grabbable.DisableHandGrab = false;
 
             // Re-bind HurricaneVR collider list to new BoxCollider
+            grabbable.GrabColliders = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<Collider>(new Collider[] { rootCol });
             grabbable.SetupColliders();
         }
 
@@ -182,6 +183,9 @@ public static class DroneFactory
         var socketable = drone.GetComponent<HVRSocketable>() ?? drone.AddComponent<HVRSocketable>();
         socketable.SocketScale = 1.0f;
         socketable.CounterScale = Vector3.one;
+        socketable.ScaleOverride = rootCol;
+        socketable.SocketOrientation = drone.transform;
+        socketable.Grabbable = grabbable;
         if (grabbable != null)
         {
             grabbable.SetupColliders();
@@ -242,7 +246,7 @@ public static class DroneFactory
         GameObject tablet = GameObject.Instantiate(basePrefab, position, rotation);
         tablet.name = "FPV_RC_Tablet";
 
-        // 1. Remove multiplayer sync, timer, button event, and unneeded scripts
+        // 1. Remove multiplayer sync, timer, button event, and unneeded scripts (preserving HVRTagSocketable / HVRSocketable)
         foreach (var c in tablet.GetComponents<Component>())
         {
             if (c == null) continue;
@@ -253,7 +257,6 @@ public static class DroneFactory
                 t.Contains("NetworkOwnershipTransfer") ||
                 t.Contains("NetworkRoomCleanup") ||
                 t.Contains("PhotonView") ||
-                t.Contains("HVRTagSocketable") ||
                 t.Contains("GrabbableLayerModifier") ||
                 t.Contains("HVRPrimaryButtonEvents") ||
                 t.Contains("HVRTriggerButtonEvents") ||
@@ -279,7 +282,7 @@ public static class DroneFactory
         for (int i = tablet.transform.childCount - 1; i >= 0; i--)
         {
             Transform child = tablet.transform.GetChild(i);
-            if (child.name != "GrabPoints")
+            if (child.name != "GrabPoints" && !child.name.ToLower().Contains("socket"))
             {
                 try
                 {
@@ -296,6 +299,15 @@ public static class DroneFactory
         foreach (var r in tablet.GetComponentsInChildren<MeshRenderer>(true))
         {
             r.enabled = false;
+        }
+
+        // Align tablet layer with native Grabbable / Utility layer
+        int grabbableLayer = LayerMask.NameToLayer("Grabbable");
+        if (grabbableLayer == -1) grabbableLayer = LayerMask.NameToLayer("Utility");
+        if (grabbableLayer == -1 && basePrefab != null) grabbableLayer = basePrefab.layer;
+        if (grabbableLayer != -1)
+        {
+            tablet.layer = grabbableLayer;
         }
 
         // 4. Attach custom visual Tablet Case and Screen
@@ -338,6 +350,10 @@ public static class DroneFactory
         col.size = new Vector3(0.20f, 0.14f, 0.04f);
         col.isTrigger = false;
         col.enabled = true;
+        if (grabbableLayer != -1)
+        {
+            col.gameObject.layer = grabbableLayer;
+        }
 
         // 6. Attach RCTablet logic component
         tablet.AddComponent<RCTablet>();
@@ -352,6 +368,10 @@ public static class DroneFactory
             grabbable.HoldType = HVRHoldType.Swap;
             grabbable.CanBeGrabbed = true;
             grabbable.DisableHandGrab = false;
+
+            // Explicitly set GrabColliders so HurricaneVR HVRTriggerGrabbableBag knows this collider
+            grabbable.GrabColliders = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<Collider>(new Collider[] { col });
+            grabbable.SetupColliders();
         }
 
         var rb = tablet.GetComponent<Rigidbody>();
@@ -363,10 +383,25 @@ public static class DroneFactory
             rb.interpolation = RigidbodyInterpolation.Interpolate;
         }
 
-        // 8. Attach HVRSocketable and setup colliders so tablet can be holstered back into vest grenade pouches
+        // 8. Attach and tune native HVRSocketable / HVRTagSocketable so tablet can be holstered back into vest grenade pouches
+        var tagSocketable = tablet.GetComponent<HVRTagSocketable>();
+        if (tagSocketable != null)
+        {
+            tagSocketable.AllowSocketing = true;
+            tagSocketable.SocketScale = 1.0f;
+            tagSocketable.CounterScale = Vector3.one;
+            tagSocketable.ScaleOverride = col;
+            tagSocketable.SocketOrientation = tablet.transform;
+            tagSocketable.Grabbable = grabbable;
+        }
+
         var socketable = tablet.GetComponent<HVRSocketable>() ?? tablet.AddComponent<HVRSocketable>();
         socketable.SocketScale = 1.0f;
         socketable.CounterScale = Vector3.one;
+        socketable.ScaleOverride = col;
+        socketable.SocketOrientation = tablet.transform;
+        socketable.Grabbable = grabbable;
+
         if (grabbable != null)
         {
             grabbable.SetupColliders();

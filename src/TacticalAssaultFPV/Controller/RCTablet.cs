@@ -436,6 +436,47 @@ public class RCTablet : MonoBehaviour
         TacticalAssaultFPV.Loadout.FPVLoadoutIntegration.RespawnStationItems();
     }
 
+    private void TryProximityHolster()
+    {
+        if (_grabbable == null || _grabbable.IsHandGrabbed || _grabbable.IsSocketed) return;
+
+        try
+        {
+            var sockets = UnityEngine.Object.FindObjectsOfType<Il2CppHurricaneVR.Framework.Core.Grabbers.HVRSocket>();
+            if (sockets == null) return;
+
+            Il2CppHurricaneVR.Framework.Core.Grabbers.HVRSocket bestSocket = null;
+            float bestDist = 0.35f;
+
+            Vector3 tabletPos = transform.position;
+            foreach (var s in sockets)
+            {
+                if (s == null || s.GrabbedTarget != null) continue;
+                string sName = s.gameObject.name.ToLower();
+                if (sName.Contains("utility") || sName.Contains("grenade") || sName.Contains("holster") || sName.Contains("pouch"))
+                {
+                    float d = Vector3.Distance(tabletPos, s.transform.position);
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        bestSocket = s;
+                    }
+                }
+            }
+
+            if (bestSocket != null)
+            {
+                MelonLoader.MelonLogger.Msg($"[RCTablet] Proximity holster assist: snapping tablet into vest pouch '{bestSocket.gameObject.name}' (d={bestDist:F2}m)");
+                TacticalAssaultFPV.Loadout.FPVLoadoutIntegration.PrepareSocketForGrabbable(bestSocket);
+                bestSocket.TryGrab(_grabbable, true, false);
+            }
+        }
+        catch (Exception ex)
+        {
+            MelonLoader.MelonLogger.Warning($"[RCTablet] TryProximityHolster error: {ex.Message}");
+        }
+    }
+
     public void Update()
     {
         _isHeld = _grabbable != null && _grabbable.IsHandGrabbed;
@@ -448,6 +489,13 @@ public class RCTablet : MonoBehaviour
             {
                 MelonLoader.MelonLogger.Msg("[RCTablet] Tablet stowed into vest or dropped -> Resetting flight control and unfreezing player.");
                 ResetFlightState();
+            }
+
+            // Proximity holster assist: if tablet was just released near a vest pouch (within 0.35m),
+            // ensure it smoothly sockets back into the vest pouch instead of dropping to the floor!
+            if (!isSocketed && (_wasHeld && !_isHeld))
+            {
+                TryProximityHolster();
             }
         }
         _wasHeld = _isHeld;
@@ -765,8 +813,11 @@ public class RCTablet : MonoBehaviour
         float battery = (_pairedDronePhysics != null && _droneBatteries.TryGetValue(_pairedDronePhysics.gameObject, out float bat)) ? bat : _batteryVoltage;
 
         // Monospace-aligned Betaflight / DJI FPV style OSD layout:
-        string lineTop = $"{flightMode,-15} {droneTag,8} {battery:F1}V";
-        string lineMid = warheadArmed ? "\n    - - [ ! WARHEAD ARMED ! ] - -\n" : "\n\n        - -  [ + ]  - -\n\n";
+        // Reticle [ + ] ALWAYS remains dead center in all flight/armed states!
+        string lineTop = $"{flightMode,-15} {droneTag,8} {battery:F1}V\n";
+        string lineMid = warheadArmed 
+            ? "    - - [ ! WARHEAD ARMED ! ] - -\n        - -  [ + ]  - -\n\n" 
+            : "\n        - -  [ + ]  - -\n\n";
         string lineBot = $"CAM {camTilt:F0}°     ALT {altitude:F1}M   SPD {speed:F1}M/S     [R-STICK]";
 
         _osdText.text = lineTop + lineMid + lineBot;

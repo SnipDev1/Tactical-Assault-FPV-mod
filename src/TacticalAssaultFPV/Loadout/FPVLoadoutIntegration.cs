@@ -764,6 +764,7 @@ public static class FPVLoadoutIntegration
         if (_activeDrones.Count >= 3 && _activeEquippedTablet != null)
         {
             MelonLoader.MelonLogger.Msg($"[Loadout] EquipToSceneSockets: All {_activeDrones.Count} drones and tablet active, syncing only.");
+            PrepareAllVestSockets();
             SyncTabletDrones();
             return;
         }
@@ -916,7 +917,7 @@ public static class FPVLoadoutIntegration
                 {
                     if (s == null) continue;
                     string name = s.gameObject.name.ToLower();
-                    if (name.Contains("utility") || name.Contains("grenade") || name.Contains("holster"))
+                    if (name.Contains("utility") || name.Contains("grenade") || name.Contains("holster") || name.Contains("pouch"))
                     {
                         PrepareSocketForGrabbable(s);
                     }

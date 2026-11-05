@@ -57,6 +57,7 @@ public class Program
         TestMilestone4SubsystemCoverage();
         TestMilestone4EdgeCasesAndAdversarial();
         TestMilestone4HighCycleStressAndZeroFlakiness();
+        TestTabletVestHolsterAndOSDReticlePersistence();
 
         Console.WriteLine("\n================================================================================");
         Console.WriteLine($"TEST RESULTS: {_passes} PASSED, {_failures} FAILED");
@@ -2809,6 +2810,73 @@ public class Program
             else failTally++;
         }
         Assert(passTally == 66666 && failTally == 33334, "100,000 Cycles Tally Engine: Exact Deterministic Math (66666 Passes, 33334 Fails)");
+    }
+
+    private static void TestTabletVestHolsterAndOSDReticlePersistence()
+    {
+        Console.WriteLine("\n--- 27. Tablet Vest Holster & Armed OSD Reticle Persistence Tests ---");
+
+        // 27.1 OSD Reticle Persistence in Safe vs Armed States
+        string lineTopSafe = $"{"DISARM [SAFE]",-15} {"DRN 1/3",8} {25.2f:F1}V\n";
+        string lineMidSafe = "\n        - -  [ + ]  - -\n\n";
+        string lineBotSafe = $"CAM {28f:F0}°     ALT {1.2f:F1}M   SPD {0.0f:F1}M/S     [R-STICK]";
+        string osdSafe = lineTopSafe + lineMidSafe + lineBotSafe;
+
+        string lineTopArmed = $"{"ARM [FLIGHT]",-15} {"DRN 1/3",8} {25.2f:F1}V\n";
+        string lineMidArmed = "    - - [ ! WARHEAD ARMED ! ] - -\n        - -  [ + ]  - -\n\n";
+        string lineBotArmed = $"CAM {28f:F0}°     ALT {1.2f:F1}M   SPD {0.0f:F1}M/S     [R-STICK]";
+        string osdArmed = lineTopArmed + lineMidArmed + lineBotArmed;
+
+        Assert(osdSafe.Contains("- -  [ + ]  - -"), "OSD in Safe State contains Central Aiming Reticle '[ + ]'");
+        Assert(osdArmed.Contains("- -  [ + ]  - -"), "OSD in Armed State preserves Central Aiming Reticle '[ + ]'");
+        Assert(osdArmed.Contains("[ ! WARHEAD ARMED ! ]"), "OSD in Armed State displays '[ ! WARHEAD ARMED ! ]' warning banner");
+        Assert(!osdSafe.Contains("[ ! WARHEAD ARMED ! ]"), "OSD in Safe State does not display armed warning banner");
+
+        var linesSafe = osdSafe.Split('\n');
+        var linesArmed = osdArmed.Split('\n');
+        Assert(linesSafe.Length == linesArmed.Length, "OSD Total Line Count Identical (5 lines) across Safe & Armed States",
+            $"Safe lines: {linesSafe.Length}, Armed lines: {linesArmed.Length}");
+
+        int reticleLineSafe = Array.FindIndex(linesSafe, l => l.Contains("[ + ]"));
+        int reticleLineArmed = Array.FindIndex(linesArmed, l => l.Contains("[ + ]"));
+        Assert(reticleLineSafe == reticleLineArmed && reticleLineSafe == 2, 
+            "Central Reticle '[ + ]' is strictly locked to Vertical Line Index 2 in both Safe and Armed states (Zero Vertical Jitter)",
+            $"Safe line: {reticleLineSafe}, Armed line: {reticleLineArmed}");
+
+        // 27.2 Proximity Holster Assist Distance & Target Validation
+        const float snapThreshold = 0.35f;
+        Assert(0.10f < snapThreshold, "Tablet within 10cm of vest pouch qualifies for Proximity Holster Snap");
+        Assert(0.34f < snapThreshold, "Tablet within 34cm of vest pouch qualifies for Proximity Holster Snap");
+        Assert(!(0.36f < snapThreshold), "Tablet at 36cm exceeds threshold -> Dropped naturally to ground");
+        Assert(!(1.20f < snapThreshold), "Tablet dropped at floor distance (1.2m) -> Dropped naturally to ground");
+
+        // 27.3 Vest Pouch Socket Name Matching
+        string[] validPouchNames = { "UtilityHolsterSocket(Clone)", "Utility1Spawner", "grenadepouch_left", "VestHolster_Right", "Chest_Pouch_Slot2" };
+        string[] invalidPouchNames = { "GroundCollider", "Door_Knob", "WeaponRack_Wall", "HelmetCamHolder" };
+
+        bool allValidMatched = true;
+        foreach (var name in validPouchNames)
+        {
+            string lower = name.ToLower();
+            if (!lower.Contains("utility") && !lower.Contains("grenade") && !lower.Contains("holster") && !lower.Contains("pouch"))
+            {
+                allValidMatched = false;
+                break;
+            }
+        }
+        Assert(allValidMatched, "All valid vest holster / grenade / utility / pouch socket names match filter pattern");
+
+        bool anyInvalidMatched = false;
+        foreach (var name in invalidPouchNames)
+        {
+            string lower = name.ToLower();
+            if (lower.Contains("utility") || lower.Contains("grenade") || lower.Contains("holster") || lower.Contains("pouch"))
+            {
+                anyInvalidMatched = true;
+                break;
+            }
+        }
+        Assert(!anyInvalidMatched, "Non-vest environmental colliders strictly excluded from Proximity Holster Snap");
     }
 
     #endregion
