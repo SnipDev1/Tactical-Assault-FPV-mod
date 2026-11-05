@@ -1,6 +1,43 @@
+# ==========================================
+# Tactical Assault FPV - .gitignore
+# ==========================================
+
+# Build artifacts & compilation outputs
 bin/
 obj/
-dump/
+*.user
+*.userprefs
+*.suo
+*.pidb
+*.booproj
+*.svd
+
+# Proprietary Game / Decompiled / Tool Interop Assemblies
+interop/
 tools/
+dump/
 backups/
+
+# Logs & Crash Dumps
 *.log
+*.dmp
+CrashReports/
+
+# Agent Workspaces & Cache
+.agents/
+
+# IDE / Editor Files
+.vs/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+
+# Local User Overrides
+*.local.props
+local.settings.json
