@@ -254,8 +254,8 @@ public class DronePhysics : MonoBehaviour
             _grabbable = GetComponent<HVRGrabbable>();
         }
 
-        // Must be held in the player's VR hand to power on
-        if (_grabbable == null || !_grabbable.IsHandGrabbed) return;
+        // Must be held in the player's VR hand to power on, and must not be socketed in vest pouch
+        if (_grabbable == null || !_grabbable.IsHandGrabbed || _grabbable.IsSocketed) return;
 
         bool triggerPressed = false;
 

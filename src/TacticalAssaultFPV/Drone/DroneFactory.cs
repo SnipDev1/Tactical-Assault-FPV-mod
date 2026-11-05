@@ -181,6 +181,11 @@ public static class DroneFactory
         // 8. Attach HVRSocketable so drone can be holstered back into vest grenade pouches
         var socketable = drone.GetComponent<HVRSocketable>() ?? drone.AddComponent<HVRSocketable>();
         socketable.SocketScale = 1.0f;
+        socketable.CounterScale = Vector3.one;
+        if (grabbable != null)
+        {
+            grabbable.SetupColliders();
+        }
 
         MelonLoader.MelonLogger.Msg("[DroneFactory] Successfully cloned FPV Drone with motor scream sound!");
         return drone;
@@ -327,13 +332,12 @@ public static class DroneFactory
         if (screenMat.HasProperty("_BaseColor")) screenMat.SetColor("_BaseColor", darkScreen);
         screen.GetComponent<Renderer>().material = screenMat;
 
-        // 5. Adjust BoxCollider to wrap around tablet
-        BoxCollider col = tablet.GetComponent<BoxCollider>();
-        if (col != null)
-        {
-            col.center = new Vector3(0f, 0.04f, 0.01f);
-            col.size = new Vector3(0.20f, 0.14f, 0.04f);
-        }
+        // 5. Ensure BoxCollider is present and wraps around tablet
+        BoxCollider col = tablet.GetComponent<BoxCollider>() ?? tablet.AddComponent<BoxCollider>();
+        col.center = new Vector3(0f, 0.04f, 0.01f);
+        col.size = new Vector3(0.20f, 0.14f, 0.04f);
+        col.isTrigger = false;
+        col.enabled = true;
 
         // 6. Attach RCTablet logic component
         tablet.AddComponent<RCTablet>();
@@ -362,6 +366,7 @@ public static class DroneFactory
         // 8. Attach HVRSocketable and setup colliders so tablet can be holstered back into vest grenade pouches
         var socketable = tablet.GetComponent<HVRSocketable>() ?? tablet.AddComponent<HVRSocketable>();
         socketable.SocketScale = 1.0f;
+        socketable.CounterScale = Vector3.one;
         if (grabbable != null)
         {
             grabbable.SetupColliders();

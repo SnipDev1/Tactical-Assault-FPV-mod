@@ -893,7 +893,8 @@ public static class FPVLoadoutIntegration
         socket.GrabbableMustBeHeld = false;
         socket.ParentDisablesGrab = false;
         socket.CheckHandOverlap = false; // Allow smooth natural placement into pouch
-        socket.GrabsFromHand = true;     // Grab from hand when hovered near pouch
+        socket.GrabsFromHand = false;    // NEVER snatch from hand! Only socket when player releases item.
+        socket.GrabTimeout = 0.5f;       // Cooldown prevents immediate re-grab when taking item out of pouch
 
         // Preserve native socket filters instead of destroying them
         if (!_savedSocketFilters.ContainsKey(socket) && socket.SocketFilters != null)
