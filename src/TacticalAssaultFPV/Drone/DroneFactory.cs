@@ -44,9 +44,6 @@ public static class DroneFactory
                 t.Contains("NetworkOwnershipTransfer") ||
                 t.Contains("NetworkRoomCleanup") ||
                 t.Contains("PhotonView") ||
-                t.Contains("HVRTagSocketable") ||
-                t.Contains("HVRSocketFilter") ||
-                t.Contains("HVRSocketable") ||
                 t.Contains("GrabbableLayerModifier") ||
                 t.Contains("SledgeHammerDestroy") ||
                 t.Contains("SledgeHammer"))
@@ -180,6 +177,10 @@ public static class DroneFactory
             rb.isKinematic = false;
             rb.useGravity = true;
         }
+
+        // 8. Attach HVRSocketable so drone can be holstered back into vest grenade pouches
+        var socketable = drone.GetComponent<HVRSocketable>() ?? drone.AddComponent<HVRSocketable>();
+        socketable.SocketScale = 1.0f;
 
         MelonLoader.MelonLogger.Msg("[DroneFactory] Successfully cloned FPV Drone with motor scream sound!");
         return drone;
@@ -356,6 +357,14 @@ public static class DroneFactory
             rb.isKinematic = false;
             rb.useGravity = true;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+
+        // 8. Attach HVRSocketable and setup colliders so tablet can be holstered back into vest grenade pouches
+        var socketable = tablet.GetComponent<HVRSocketable>() ?? tablet.AddComponent<HVRSocketable>();
+        socketable.SocketScale = 1.0f;
+        if (grabbable != null)
+        {
+            grabbable.SetupColliders();
         }
 
         MelonLoader.MelonLogger.Msg($"[DroneFactory] Successfully cloned RC Tablet from '{basePrefab.name}' with native hand poser!");

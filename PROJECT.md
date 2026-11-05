@@ -50,6 +50,8 @@ The architecture consists of:
 | 27 | OSD Monospace & Right-Stick Debounce | Debounce right-stick clicks to eliminate camera flickering; add backface culling to TextMesh | M5 | USER_REPORT |
 | 28 | Trigger Power-On & ESC Startup Chime | Hold drone in hand + squeeze trigger to power on; plays ESC chime, lights neon LED, links to tablet | M6 | USER_REPORT |
 | 29 | Spawner Debounce & Deduplication | Prevent duplicate spawner invocations creating phantom drones; ensure stable tablet pairing | M6 | USER_REPORT |
+| 30 | Vest Grenade Pouch Return & Socketing | Attach HVRSocketable to Drone & Tablet; auto-unfreeze player and auto-power-off/disarm on pouch return | M7 | USER_REPORT |
+| 31 | Warm 3D Spatial Acoustic Model | Low-frequency prop hum & chop (360/720Hz), 100% 3D spatialized audio, eliminate harsh 7kHz carrier scream | M7 | USER_REPORT |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -60,6 +62,7 @@ The architecture consists of:
 | M4 | Diagnostics Suite Expansion & Final Verification | Expand Diagnostics.cs to test all 9 subsystems, eliminate dummy asserts, run build, verify deployment DLL, and validate diagnostics pass | M1, M2, M3 | DONE (Verified: 0 errors, 182 stress tests pass, 0 dummy asserts, CLEAN audit, auto-deployed) |
 | M5 | Physical Grabbing, Camera Feed & Visual VFX Hotfix | Eliminate socket tag rejection, re-register grabbable colliders, bind URP BaseMap texture on screen, debounce right-stick switching, add visual explosion VFX and pilot audio | M4 | DONE (Verified: 0 errors, 182 stress tests pass, deployed) |
 | M6 | Trigger Power-On System & Phantom Drone Fix | Require trigger press in hand to power on drone, procedural ESC chimes, status LED, dynamic tablet link, eliminate duplicate spawner instantiation | M5 | DONE (Verified: 0 errors, 182 stress tests pass, deployed) |
+| M7 | Vest Pouch Return & Warm 3D Acoustic Redesign | Enable full return to vest pouches, auto-power-off on stow, auto player locomotion unfreeze, deep pleasant propwash sound, 100% 3D spatial sound | M6 | DONE (Verified: 0 errors, 182 stress tests pass, deployed) |
 
 ## Interface Contracts
 ### DronePhysics ↔ DroneFactory / VR Grab

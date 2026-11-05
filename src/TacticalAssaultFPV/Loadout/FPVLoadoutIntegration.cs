@@ -533,6 +533,7 @@ public static class FPVLoadoutIntegration
                 if (equipManager.utility2Spawner != null) SpawnForUtilitySpawner(equipManager.utility2Spawner, 2);
                 if (equipManager.utility22Spawner != null) SpawnForUtilitySpawner(equipManager.utility22Spawner, 2);
 
+                PrepareAllVestSockets();
                 SyncTabletDrones();
                 MelonLoader.MelonLogger.Msg($"[Loadout] Synchronized {_activeDrones.Count} drones with RC Tablet on equip.");
             }
@@ -813,6 +814,7 @@ public static class FPVLoadoutIntegration
 
             if (physics != null && camRig != null && rcTablet != null)
             {
+                PrepareAllVestSockets();
                 SyncTabletDrones();
             }
 
@@ -890,6 +892,8 @@ public static class FPVLoadoutIntegration
         socket.CanRemoveGrabbable = true;
         socket.GrabbableMustBeHeld = false;
         socket.ParentDisablesGrab = false;
+        socket.CheckHandOverlap = false; // Allow smooth natural placement into pouch
+        socket.GrabsFromHand = true;     // Grab from hand when hovered near pouch
 
         // Preserve native socket filters instead of destroying them
         if (!_savedSocketFilters.ContainsKey(socket) && socket.SocketFilters != null)
@@ -898,6 +902,27 @@ public static class FPVLoadoutIntegration
         }
 
         socket.SocketFilters = new Il2CppReferenceArray<HVRSocketFilter>(0);
+    }
+
+    public static void PrepareAllVestSockets()
+    {
+        try
+        {
+            var sockets = UnityEngine.Object.FindObjectsOfType<HVRSocket>();
+            if (sockets != null)
+            {
+                foreach (var s in sockets)
+                {
+                    if (s == null) continue;
+                    string name = s.gameObject.name.ToLower();
+                    if (name.Contains("utility") || name.Contains("grenade") || name.Contains("holster"))
+                    {
+                        PrepareSocketForGrabbable(s);
+                    }
+                }
+            }
+        }
+        catch { }
     }
 
     private static void SetColor(GameObject obj, Color color)

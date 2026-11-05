@@ -40,10 +40,7 @@ public static class DroneMotorAudio
 
     private static AudioClip BuildPowerOnClip()
     {
-        // Authentic Betaflight / BLHeli 3-tone ESC startup chime:
-        // Tone 1: 659 Hz (E5) 0ms - 90ms
-        // Tone 2: 784 Hz (G5) 110ms - 200ms
-        // Tone 3: 1046 Hz (C6) 220ms - 360ms
+        // Smooth Betaflight ESC 3-tone chime (E5 -> G5 -> C6) with warm bell decay
         int totalSamples = (int)(SampleRate * 0.40f); // 400ms buffer
         float[] samples = new float[totalSamples];
 
@@ -55,28 +52,28 @@ public static class DroneMotorAudio
 
             if (t >= 0.00f && t < 0.09f)
             {
-                freq = 659.25f;
+                freq = 659.25f; // E5
                 float localT = t / 0.09f;
-                env = Mathf.Sin(localT * Mathf.PI);
+                env = Mathf.Sin(localT * Mathf.PI) * Mathf.Exp(-localT * 2.0f);
             }
             else if (t >= 0.11f && t < 0.20f)
             {
-                freq = 783.99f;
+                freq = 783.99f; // G5
                 float localT = (t - 0.11f) / 0.09f;
-                env = Mathf.Sin(localT * Mathf.PI);
+                env = Mathf.Sin(localT * Mathf.PI) * Mathf.Exp(-localT * 2.0f);
             }
             else if (t >= 0.22f && t < 0.36f)
             {
-                freq = 1046.50f;
+                freq = 1046.50f; // C6
                 float localT = (t - 0.22f) / 0.14f;
-                env = Mathf.Sin(localT * Mathf.PI);
+                env = Mathf.Sin(localT * Mathf.PI) * Mathf.Exp(-localT * 2.0f);
             }
 
             if (freq > 0f)
             {
                 double phase = 2.0 * Math.PI * freq * t;
-                double val = Math.Sin(phase) + 0.35 * Math.Sin(3.0 * phase);
-                samples[i] = (float)(val * env * 0.85);
+                double val = Math.Sin(phase); // Pure warm sine wave
+                samples[i] = (float)(val * env * 0.65);
             }
         }
 
@@ -90,7 +87,7 @@ public static class DroneMotorAudio
     {
         try
         {
-            AudioSource.PlayClipAtPoint(PowerOnClip, position, 1.0f);
+            AudioSource.PlayClipAtPoint(PowerOnClip, position, 0.85f);
         }
         catch { }
     }
@@ -105,14 +102,16 @@ public static class DroneMotorAudio
         var rnd = new System.Random(1337);
 
         // Frequencies chosen with exact integer cycles in 1.0 second:
-        // 720 Hz (3-blade propeller pass chop), 1440 Hz (2nd prop harmonic),
-        // 2640 Hz & 3300 Hz (14-pole brushless motor ESC commutation carrier singing whine)
+        // 360 Hz (deep 3-blade prop hum), 720 Hz (blade pass chop), 1440 Hz (propwash harmonic)
+        // 2640 Hz & 3300 Hz (commutation carrier, smooth subtle overtone)
+        const double fHum = 360.0;
         const double fBlade = 720.0;
         const double fSub = 1440.0;
         const double fWhine1 = 2640.0;
         const double fWhine2 = 3300.0;
 
         const double twoPi = 2.0 * Math.PI;
+        double wHum = twoPi * fHum / SampleRate;
         double wBlade = twoPi * fBlade / SampleRate;
         double wSub = twoPi * fSub / SampleRate;
         double wWhine1 = twoPi * fWhine1 / SampleRate;
@@ -123,26 +122,27 @@ public static class DroneMotorAudio
         for (int i = 0; i < 1000; i++)
         {
             float white = (float)(rnd.NextDouble() * 2.0 - 1.0);
-            noiseFilter += 0.25f * (white - noiseFilter);
+            noiseFilter += 0.18f * (white - noiseFilter);
         }
 
         for (int i = 0; i < totalGenerated; i++)
         {
-            // 1. High-frequency ESC PWM whine
-            double whine = Math.Sin(wWhine1 * i) * 0.35 +
-                           Math.Sin(wWhine2 * i) * 0.20 +
-                           Math.Sin(wSub * i) * 0.25;
+            // 1. Warm low-frequency propeller blade hum & chop (dominant body)
+            double propChop = Math.Sin(wHum * i) * 0.45 +
+                              Math.Sin(wBlade * i) * 0.30 +
+                              Math.Sin(wSub * i) * 0.12;
 
-            // 2. Propeller blade chop
-            double blade = Math.Sin(wBlade * i) * 0.40;
+            // 2. Soft, subtle electrical ESC commutation buzz (gentle overtone, not piercing)
+            double escWhine = Math.Sin(wWhine1 * i) * 0.04 +
+                              Math.Sin(wWhine2 * i) * 0.03;
 
-            // 3. Air slice turbulence noise (gentle low-pass smoothed)
+            // 3. Aerodynamic air wash turbulence noise (warm low-pass filter)
             float white = (float)(rnd.NextDouble() * 2.0 - 1.0);
-            noiseFilter += 0.25f * (white - noiseFilter);
-            double airNoise = noiseFilter * 0.15;
+            noiseFilter += 0.18f * (white - noiseFilter);
+            double airNoise = noiseFilter * 0.22;
 
-            // 4. Combined signal with analog tanh soft saturation
-            double acc = Math.Tanh((whine + blade + airNoise) * 0.85);
+            // 4. Combined signal with analog tanh soft saturation for warm character
+            double acc = Math.Tanh((propChop + escWhine + airNoise) * 0.85);
 
             raw[i] = (float)acc;
         }
@@ -154,8 +154,6 @@ public static class DroneMotorAudio
         }
 
         // Crossfade 10ms at the loop boundaries to ensure zero boundary pop:
-        // raw[n + i] is the direct phase-continuous continuation of raw[n - 1] (= s[n - 1]).
-        // At i = 0 (loop wrap), s[0] equals raw[n], which smoothly follows s[n - 1] without any phase jump.
         float peak = 0f;
         for (int i = 0; i < crossfadeSamples; i++)
         {
@@ -188,11 +186,11 @@ public static class DroneMotorAudio
         src.clip = clip;
         src.loop = true;
         src.playOnAwake = false;
-        src.spatialBlend = 0.70f; // Authentic FPV pilot telemetry audio: 70% 3D spatial world, 30% direct headset/speaker
+        src.spatialBlend = 1.0f; // 100% 3D spatialized in VR world space (never piercing pilot's ears directly)
         src.rolloffMode = AudioRolloffMode.Logarithmic;
-        src.minDistance = 3.0f;
-        src.maxDistance = 200.0f;
-        src.dopplerLevel = 0.6f;
+        src.minDistance = 2.0f;
+        src.maxDistance = 60.0f;
+        src.dopplerLevel = 0.4f;
         src.volume = volume;
         return src;
     }

@@ -178,6 +178,73 @@ public class DronePhysics : MonoBehaviour
         catch { }
     }
 
+    public void PowerOff()
+    {
+        if (!_isPoweredOn) return;
+        _isPoweredOn = false;
+        _isArmed = false;
+
+        MelonLoader.MelonLogger.Msg($"[DronePhysics] Drone '{gameObject.name}' returned to vest pouch -> Powered OFF & Disarmed.");
+
+        // 1. Turn off status LED
+        if (StatusLED != null)
+        {
+            var r = StatusLED.GetComponent<Renderer>();
+            if (r != null)
+            {
+                Material m = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
+                Color dark = new Color(0.12f, 0.12f, 0.12f);
+                m.color = dark;
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", dark);
+                r.material = m;
+            }
+        }
+
+        // 2. Stop motor audio
+        if (MotorAudio != null && MotorAudio.isPlaying)
+        {
+            MotorAudio.Stop();
+        }
+
+        // 3. Pause camera stream
+        var camRig = GetComponent<DroneCameraRig>();
+        if (camRig != null)
+        {
+            camRig.SetStreaming(false);
+        }
+
+        // 4. Unregister from RC Tablets
+        for (int i = 0; i < Controller.RCTablet.ActiveTablets.Count; i++)
+        {
+            var tab = Controller.RCTablet.ActiveTablets[i];
+            if (tab != null)
+            {
+                tab.UnregisterDrone(gameObject);
+            }
+        }
+    }
+
+    private bool _wasSocketed;
+
+    private void CheckSocketState()
+    {
+        if (_grabbable == null)
+        {
+            _grabbable = GetComponent<HVRGrabbable>();
+        }
+        if (_grabbable == null) return;
+
+        bool isSocketed = _grabbable.IsSocketed;
+        if (isSocketed && !_wasSocketed)
+        {
+            if (_isPoweredOn)
+            {
+                PowerOff();
+            }
+        }
+        _wasSocketed = isSocketed;
+    }
+
     private void CheckPowerOnInput()
     {
         if (_isPoweredOn) return;
@@ -231,6 +298,7 @@ public class DronePhysics : MonoBehaviour
 
     public void Update()
     {
+        CheckSocketState();
         CheckPowerOnInput();
         AnimatePropellers();
         UpdateMotorAudio();
@@ -374,11 +442,11 @@ public class DronePhysics : MonoBehaviour
 
             float stickActivity = Mathf.Max(Mathf.Abs(ClimbInput), Mathf.Abs(PitchInput), Mathf.Abs(RollInput), Mathf.Abs(YawInput));
             float speed = _rb != null ? _rb.linearVelocity.magnitude : 0f;
-            float throttleLoad = Mathf.Clamp01(0.20f + 0.80f * (stickActivity * 0.75f + (speed / 16.0f)));
+            float throttleLoad = Mathf.Clamp01(0.15f + 0.85f * (stickActivity * 0.70f + (speed / 18.0f)));
 
-            // Authentic FPV motor scream: idle 0.85x (~2240 Hz carrier), punchout 2.10x (~5500 Hz scream)
-            MotorAudio.pitch = Mathf.Lerp(0.85f, 2.10f, throttleLoad);
-            MotorAudio.volume = Mathf.Lerp(0.55f, 0.95f, throttleLoad);
+            // Smooth realistic RPM pitch: idle 0.90x, punchout 1.45x (pleasant, warm, no harsh screech)
+            MotorAudio.pitch = Mathf.Lerp(0.90f, 1.45f, throttleLoad);
+            MotorAudio.volume = Mathf.Lerp(0.35f, 0.65f, throttleLoad);
         }
         else
         {

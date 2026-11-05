@@ -217,6 +217,31 @@ public class RCTablet : MonoBehaviour
         }
     }
 
+    [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+    public void UnregisterDrone(GameObject drone)
+    {
+        if (drone != null && _registeredDrones.Contains(drone))
+        {
+            int index = _registeredDrones.IndexOf(drone);
+            _registeredDrones.Remove(drone);
+            _droneBatteries.Remove(drone);
+
+            if (_pairedDronePhysics != null && _pairedDronePhysics.gameObject == drone)
+            {
+                _pairedDronePhysics = null;
+                _pairedDroneCamera = null;
+                _pairedDroneExplosive = null;
+                _pairedDroneRigidbody = null;
+
+                if (_registeredDrones.Count > 0)
+                {
+                    _currentDroneIndex = Mathf.Clamp(index, 0, _registeredDrones.Count - 1);
+                    ConnectToDrone(_currentDroneIndex);
+                }
+            }
+        }
+    }
+
     public void ConnectToDrone(int index)
     {
         PruneNullDrones();
@@ -416,12 +441,12 @@ public class RCTablet : MonoBehaviour
         _isHeld = _grabbable != null && _grabbable.IsHandGrabbed;
         bool isSocketed = _grabbable != null && _grabbable.IsSocketed;
 
-        // Reset flight state and player locomotion freeze when stowed or dropped (D2)
-        if (_wasHeld && (!_isHeld || isSocketed))
+        // Reset flight state and player locomotion freeze immediately when stowed into pouch or dropped
+        if (isSocketed || (_wasHeld && !_isHeld))
         {
             if (_isControlMode || IsPlayerFrozen)
             {
-                MelonLoader.MelonLogger.Msg("[RCTablet] Tablet stowed or dropped -> Resetting flight control and locomotion freeze.");
+                MelonLoader.MelonLogger.Msg("[RCTablet] Tablet stowed into vest or dropped -> Resetting flight control and unfreezing player.");
                 ResetFlightState();
             }
         }
