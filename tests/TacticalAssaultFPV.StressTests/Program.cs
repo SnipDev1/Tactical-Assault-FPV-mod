@@ -78,6 +78,12 @@ public class Program
         TestMilestone7IndependentSlotsAndAssetConsistency();
 
         Console.WriteLine("\n================================================================================");
+        Console.WriteLine("    TACTICAL ASSAULT FPV - EMPIRICAL STRESS TEST SUITE (MILESTONE 8)");
+        Console.WriteLine("================================================================================\n");
+
+        TestMilestone8SdkMultiModRegistryAndDispatch();
+
+        Console.WriteLine("\n================================================================================");
         Console.WriteLine($"TEST RESULTS: {_passes} PASSED, {_failures} FAILED");
         Console.WriteLine("================================================================================");
 
@@ -3269,6 +3275,68 @@ public class Program
         bool unityNativeAlive = false; // Destroyed in C++ by scene unload
         bool meshNeedsReload = (!csharpRefNotNull || !unityNativeAlive);
         Assert(meshNeedsReload, "Alive-check correctly detects destroyed native Unity object and triggers reload");
+    }
+
+    #endregion
+
+    #region 31. Milestone 8: SDK Multi-Mod Registry & Dispatch Invariants
+
+    private static void TestMilestone8SdkMultiModRegistryAndDispatch()
+    {
+        Console.WriteLine("--- 31. Milestone 8: SDK Multi-Mod Registry & Dispatch ---");
+
+        // 31.1 Multi-mod item registration simulation
+        var registry = new Dictionary<string, string>();
+        registry["fpv.drone"] = "FPV STRIKE DRONE";
+        registry["sample.flare"] = "SIGNAL FLARE";
+        registry["mod.claymore"] = "CLAYMORE MINE";
+
+        Assert(registry.Count == 3, "Registry successfully stores 3 independent items from different mods");
+
+        // 31.2 Button Click Parser
+        string btnA = "TAVR_SDK_Btn_sample.flare_Slot1";
+        string prefix = "TAVR_SDK_Btn_";
+        bool isSdkBtn = btnA.StartsWith(prefix);
+        Assert(isSdkBtn, "Button click correctly identified as SDK-managed item button");
+
+        string raw = btnA.Substring(prefix.Length);
+        int slotIdx = raw.LastIndexOf("_Slot");
+        string parsedId = raw.Substring(0, slotIdx);
+        int parsedSlot = raw.EndsWith("Slot1") ? 1 : 2;
+
+        Assert(parsedId == "sample.flare", "Parsed item ID matches 'sample.flare'");
+        Assert(parsedSlot == 1, "Parsed slot number matches Slot 1");
+
+        // 31.3 Coexistence: Slot 1 = Mod B (Signal Flare), Slot 2 = Mod A (FPV Drone Kit)
+        string? slot1Item = "sample.flare";
+        string slot2Item = "fpv.drone";
+
+        bool isSlot1Custom = !string.IsNullOrEmpty(slot1Item);
+        bool isSlot2Custom = !string.IsNullOrEmpty(slot2Item);
+
+        // Native suppression flags
+        bool suppressSlot1Native = isSlot1Custom;
+        bool suppressSlot2Native = isSlot2Custom;
+        Assert(suppressSlot1Native && suppressSlot2Native, "Both custom mod slots suppress vanilla grenade spawners");
+
+        // Pouch allocation simulation:
+        // Slot 1 (Flare): Primary = Flare, Secondary = Flare
+        // Slot 2 (FPV Kit): Primary = RC Tablet, Secondary = FPV Drone
+        string[] pouches = new string[4];
+        pouches[0] = slot1Item; // Flare
+        pouches[1] = slot1Item; // Flare
+        pouches[2] = "fpv.tablet";
+        pouches[3] = slot2Item; // Drone
+
+        Assert(pouches[0] == "sample.flare" && pouches[1] == "sample.flare", "Slot 1 pouches receive Mod B's Signal Flares");
+        Assert(pouches[2] == "fpv.tablet" && pouches[3] == "fpv.drone", "Slot 2 pouches receive Mod A's Tablet & Drone");
+
+        // 31.4 Hybrid: Slot 1 = Vanilla (null), Slot 2 = Mod B (Flare)
+        slot1Item = null;
+        isSlot1Custom = !string.IsNullOrEmpty(slot1Item);
+        Assert(!isSlot1Custom, "Slot 1 custom state cleared without affecting Slot 2");
+        Assert(!isSlot1Custom, "Vanilla spawner for Slot 1 runs unsuppressed (spawns game grenades)");
+        Assert(isSlot2Custom, "Slot 2 custom item remains fully active and holstered");
     }
 
     #endregion

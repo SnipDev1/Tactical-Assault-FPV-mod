@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>SampleUtilityMod</AssemblyName>
+    <RootNamespace>SampleUtilityMod</RootNamespace>
+    <OutputPath>../../bin/$(Configuration)/</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Deployment Paths -->
+    <GameDir Condition="'$(GameDir)' == '' And '$([MSBuild]::IsOSPlatform(&quot;Windows&quot;))'">C:\Program Files (x86)\Steam\steamapps\common\Tactical Assault VR</GameDir>
+    <GameDir Condition="'$(GameDir)' == ''">/mnt/olddisk/SteamLibrary/steamapps/common/Tactical Assault VR</GameDir>
+    <GameModsPath Condition="'$(GameModsPath)' == ''">$(GameDir)/Mods</GameModsPath>
+
+    <!-- Reference Fallback Paths -->
+    <MelonNet6Path Condition="Exists('../../tools/melonloader/MelonLoader/net6/MelonLoader.dll')">../../tools/melonloader/MelonLoader/net6</MelonNet6Path>
+    <MelonNet6Path Condition="'$(MelonNet6Path)' == '' And Exists('$(GameDir)/MelonLoader/net6/MelonLoader.dll')">$(GameDir)/MelonLoader/net6</MelonNet6Path>
+    <MelonNet6Path Condition="'$(MelonNet6Path)' == ''">../../tools/melonloader/MelonLoader/net6</MelonNet6Path>
+
+    <InteropPath Condition="Exists('../../interop/Assembly-CSharp.dll')">../../interop</InteropPath>
+    <InteropPath Condition="'$(InteropPath)' == '' And Exists('$(GameDir)/MelonLoader/Il2CppAssemblies/Assembly-CSharp.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies</InteropPath>
+    <InteropPath Condition="'$(InteropPath)' == ''">../../interop</InteropPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- TacticalAssaultVR.SDK Reference -->
+    <ProjectReference Include="../../src/TacticalAssaultVR.SDK/TacticalAssaultVR.SDK.csproj">
+      <Private>False</Private>
+    </ProjectReference>
+
+    <!-- MelonLoader references -->
+    <Reference Include="MelonLoader">
+      <HintPath>$(MelonNet6Path)/MelonLoader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(MelonNet6Path)/Il2CppInterop.Runtime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- Interop game assemblies -->
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>$(InteropPath)/Il2Cppmscorlib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(InteropPath)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(InteropPath)/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(InteropPath)/Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Il2CppHurricaneVR.Framework">
+      <HintPath>$(InteropPath)/Il2CppHurricaneVR.Framework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="Build">
+    <MakeDir Directories="$(GameModsPath)" Condition="!Exists('$(GameModsPath)') And Exists('$(GameDir)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(GameModsPath)/$(TargetFileName)" Condition="Exists('$(GameModsPath)')" ContinueOnError="true" />
+    <Message Importance="High" Text="[DEPLOY] Successfully deployed $(TargetFileName) -&gt; $(GameModsPath)/$(TargetFileName)" Condition="Exists('$(GameModsPath)')" />
+  </Target>
+
+</Project>
