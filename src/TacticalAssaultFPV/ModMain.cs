@@ -34,6 +34,7 @@ public class ModMain : MelonMod
         ClassInjector.RegisterTypeInIl2Cpp<DroneCameraRig>();
         ClassInjector.RegisterTypeInIl2Cpp<RCTablet>();
         ClassInjector.RegisterTypeInIl2Cpp<ArmoryEquipButtonTrigger>();
+        ClassInjector.RegisterTypeInIl2Cpp<DroppedPayload>();
 
         MelonLogger.Msg("TacticalAssaultFPV Mod initialized! Custom IL2CPP types registered.");
     }

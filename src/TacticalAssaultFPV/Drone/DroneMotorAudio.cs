@@ -194,4 +194,56 @@ public static class DroneMotorAudio
         src.volume = volume;
         return src;
     }
+
+    public static void PlayPayloadSwitchSound(Vector3 pos, int payloadType)
+    {
+        float freq = payloadType switch
+        {
+            1 => 660f,  // E5 (Drop Impact)
+            2 => 880f,  // A5 (Drop Frag)
+            _ => 440f   // A4 (Kamikaze)
+        };
+        PlayTone(pos, freq, 0.08f, 0.5f);
+    }
+
+    public static void PlayPrimeSound(Vector3 pos)
+    {
+        PlayTone(pos, 1174.66f, 0.06f, 0.6f); // D6 short alert chirp
+    }
+
+    public static void PlayDropSound(Vector3 pos)
+    {
+        PlayTone(pos, 320f, 0.09f, 0.7f); // Low latch clack
+    }
+
+    private static void PlayTone(Vector3 pos, float freq, float duration, float volume)
+    {
+        try
+        {
+            int samples = (int)(SampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / SampleRate;
+                float env = Mathf.Sin((float)i / samples * Mathf.PI);
+                data[i] = Mathf.Sin(2f * Mathf.PI * freq * t) * env;
+            }
+
+            AudioClip clip = AudioClip.Create($"Tone_{freq}", samples, 1, SampleRate, false);
+            clip.hideFlags = HideFlags.HideAndDontSave;
+            clip.SetData(data, 0);
+
+            GameObject go = new GameObject($"ToneAudio_{freq}");
+            go.transform.position = pos;
+            var src = go.AddComponent<AudioSource>();
+            src.clip = clip;
+            src.spatialBlend = 1f;
+            src.minDistance = 0.5f;
+            src.maxDistance = 20f;
+            src.volume = volume;
+            src.Play();
+            UnityEngine.Object.Destroy(go, duration + 0.1f);
+        }
+        catch { }
+    }
 }

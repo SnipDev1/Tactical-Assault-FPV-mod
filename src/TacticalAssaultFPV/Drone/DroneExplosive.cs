@@ -19,6 +19,10 @@ public class DroneExplosive : MonoBehaviour
     private bool _hasDetonated;
     private float _armedTime;
 
+    private DronePayloadType _payloadType = DronePayloadType.Kamikaze;
+    private DropPayloadState _dropState = DropPayloadState.Loaded;
+    private float _primeTime;
+
     private const float MinDetonationSpeed = 1.8f;
 
     [HideFromIl2Cpp]
@@ -27,11 +31,110 @@ public class DroneExplosive : MonoBehaviour
 
     public bool IsArmed => _isArmed;
     public bool HasDetonated => _hasDetonated;
+    public DronePayloadType PayloadType => _payloadType;
+    public DropPayloadState DropState => _dropState;
+
+    [HideFromIl2Cpp]
+    internal GameObject[] PayloadVisuals { get; set; }
 
     public void Awake()
     {
         _physics = GetComponent<DronePhysics>();
         _isArmed = false;
+        _payloadType = DronePayloadType.Kamikaze;
+        _dropState = DropPayloadState.Loaded;
+    }
+
+    public void SetPayloadType(DronePayloadType type)
+    {
+        _payloadType = type;
+        _dropState = DropPayloadState.Loaded;
+        UpdatePayloadVisuals();
+    }
+
+    public void UpdatePayloadVisuals()
+    {
+        if (PayloadVisuals == null) return;
+        for (int i = 0; i < PayloadVisuals.Length; i++)
+        {
+            if (PayloadVisuals[i] != null)
+            {
+                bool active = (i == (int)_payloadType) && (_dropState != DropPayloadState.Dropped);
+                PayloadVisuals[i].SetActive(active);
+            }
+        }
+    }
+
+    public void PrimeDrop()
+    {
+        if (_payloadType == DronePayloadType.Kamikaze) return;
+        if (_dropState != DropPayloadState.Loaded) return;
+        _dropState = DropPayloadState.Primed;
+        _primeTime = Time.time;
+        DroneMotorAudio.PlayPrimeSound(transform.position);
+    }
+
+    public void ReleasePayload()
+    {
+        if (_payloadType == DronePayloadType.Kamikaze) return;
+        if (_dropState == DropPayloadState.Dropped) return;
+
+        _dropState = DropPayloadState.Dropped;
+        UpdatePayloadVisuals();
+        SpawnDroppedGrenade();
+        DroneMotorAudio.PlayDropSound(transform.position);
+    }
+
+    private void SpawnDroppedGrenade()
+    {
+        Vector3 spawnPos = transform.position + transform.rotation * new Vector3(0f, -0.04f, 0.02f);
+        Quaternion spawnRot = transform.rotation;
+
+        GameObject grenade = new GameObject($"Dropped_{_payloadType}");
+        grenade.transform.position = spawnPos;
+        grenade.transform.rotation = spawnRot;
+
+        var rb = grenade.AddComponent<Rigidbody>();
+        rb.mass = 0.45f;
+        rb.linearDamping = 0.05f;
+        rb.angularDamping = 0.1f;
+
+        var droneRb = GetComponent<Rigidbody>();
+        if (droneRb != null)
+        {
+            rb.linearVelocity = droneRb.linearVelocity;
+            rb.angularVelocity = droneRb.angularVelocity + UnityEngine.Random.insideUnitSphere * 2.0f;
+        }
+
+        var col = grenade.AddComponent<SphereCollider>();
+        col.radius = 0.035f;
+
+        var filter = grenade.AddComponent<MeshFilter>();
+        var renderer = grenade.AddComponent<MeshRenderer>();
+        if (_payloadType == DronePayloadType.DropImpact)
+        {
+            filter.sharedMesh = DroneModelAssets.ImpactGrenadeMesh;
+            renderer.sharedMaterial = DroneModelAssets.ImpactGrenadeMaterial;
+        }
+        else
+        {
+            filter.sharedMesh = DroneModelAssets.FragGrenadeMesh;
+            renderer.sharedMaterial = DroneModelAssets.FragGrenadeMaterial;
+        }
+
+        var payload = grenade.AddComponent<DroppedPayload>();
+        payload.Initialize(_payloadType);
+    }
+
+    public void Update()
+    {
+        if (_dropState == DropPayloadState.Primed)
+        {
+            if (Time.time > _primeTime + 1.2f)
+            {
+                _dropState = DropPayloadState.Loaded;
+            }
+        }
     }
 
     public void SetArmed(bool armed)
@@ -50,6 +153,8 @@ public class DroneExplosive : MonoBehaviour
 
     public void OnCollisionEnter(Collision collision)
     {
+        // Only Kamikaze payload detonates on drone collision!
+        if (_payloadType != DronePayloadType.Kamikaze) return;
         if (_hasDetonated || !_isArmed) return;
 
         // Safety 1: Never detonate while held in the player's hand or socketed in vest pouch
@@ -89,16 +194,21 @@ public class DroneExplosive : MonoBehaviour
         Vector3 explosionPos = transform.position;
         MelonLoader.MelonLogger.Msg($"[FPV Explosive] Detonating Impact Grenade warhead at {explosionPos}!");
 
-        PlayExplosionAudio(explosionPos);
-        SpawnNativeExplosionFX(explosionPos);
-        SpawnProceduralExplosionVFX(explosionPos);
-        TriggerGameExplosion(explosionPos);
+        TriggerExplosionAt(explosionPos);
         OnDetonated?.Invoke();
 
         Destroy(gameObject);
     }
 
-    private void SpawnProceduralExplosionVFX(Vector3 pos)
+    public static void TriggerExplosionAt(Vector3 explosionPos, GameObject source = null)
+    {
+        PlayExplosionAudio(explosionPos);
+        SpawnNativeExplosionFX(explosionPos);
+        SpawnProceduralExplosionVFX(explosionPos);
+        TriggerGameExplosion(explosionPos, source);
+    }
+
+    private static void SpawnProceduralExplosionVFX(Vector3 pos)
     {
         try
         {
@@ -168,7 +278,7 @@ public class DroneExplosive : MonoBehaviour
         }
     }
 
-    private void SpawnNativeExplosionFX(Vector3 pos)
+    private static void SpawnNativeExplosionFX(Vector3 pos)
     {
         try
         {
@@ -223,7 +333,7 @@ public class DroneExplosive : MonoBehaviour
         catch { }
     }
 
-    private void PlayExplosionAudio(Vector3 pos)
+    private static void PlayExplosionAudio(Vector3 pos)
     {
         try
         {
@@ -302,7 +412,7 @@ public class DroneExplosive : MonoBehaviour
         }
     }
 
-    private void TriggerGameExplosion(Vector3 pos)
+    private static void TriggerGameExplosion(Vector3 pos, GameObject source = null)
     {
         // Contact grenade explosion specifications: radius ~5.5m, max damage 250
         float explosionRadius = 5.5f;
@@ -325,7 +435,7 @@ public class DroneExplosive : MonoBehaviour
 
         foreach (Collider col in hitColliders)
         {
-            if (col == null || col.gameObject == gameObject) continue;
+            if (col == null || (source != null && col.gameObject == source)) continue;
 
             float dist = Vector3.Distance(pos, col.transform.position);
             float falloff = Mathf.Clamp01(1f - (dist / explosionRadius));
@@ -337,7 +447,7 @@ public class DroneExplosive : MonoBehaviour
                 var enemyHealth = col.GetComponentInParent<Il2CppEnemyAI.EnemyHealth>();
                 if (enemyHealth != null && damagedEnemies.Add(enemyHealth))
                 {
-                    enemyHealth.TakeDamage(pos, (col.transform.position - pos).normalized, dmg, col, gameObject);
+                    enemyHealth.TakeDamage(pos, (col.transform.position - pos).normalized, dmg, col, source);
                 }
             }
             catch { }

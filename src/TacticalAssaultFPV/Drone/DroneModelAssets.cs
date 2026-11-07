@@ -17,6 +17,11 @@ public static class DroneModelAssets
     private static Material _bombMaterial;
     private static Material _lampMaterial;
 
+    private static Mesh _impactMesh;
+    private static Material _impactMat;
+    private static Mesh _fragMesh;
+    private static Material _fragMat;
+
     [HideFromIl2Cpp]
     public static Mesh BodyMesh => _bodyMesh ??= LoadMeshResource("drone_body.mesh");
 
@@ -37,6 +42,18 @@ public static class DroneModelAssets
 
     [HideFromIl2Cpp]
     public static Material LampMaterial => _lampMaterial ??= CreateLampMaterial();
+
+    [HideFromIl2Cpp]
+    public static Mesh ImpactGrenadeMesh => _impactMesh ??= ResolveGrenadeMesh("Impact", CreateFallbackImpactMesh);
+
+    [HideFromIl2Cpp]
+    public static Material ImpactGrenadeMaterial => _impactMat ??= ResolveGrenadeMaterial("Impact", new Color(0.28f, 0.32f, 0.22f));
+
+    [HideFromIl2Cpp]
+    public static Mesh FragGrenadeMesh => _fragMesh ??= ResolveGrenadeMesh("Frag", CreateFallbackFragMesh);
+
+    [HideFromIl2Cpp]
+    public static Material FragGrenadeMaterial => _fragMat ??= ResolveGrenadeMaterial("Frag", new Color(0.20f, 0.28f, 0.16f));
 
     private static Mesh LoadMeshResource(string name)
     {
@@ -161,6 +178,80 @@ public static class DroneModelAssets
     private static Mesh CreateFallbackMesh(string name)
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        var mesh = go.GetComponent<MeshFilter>()?.sharedMesh;
+        GameObject.DestroyImmediate(go);
+        return mesh;
+    }
+
+    private static Mesh ResolveGrenadeMesh(string keyword, Func<Mesh> fallback)
+    {
+        try
+        {
+            var equipMgr = UnityEngine.Object.FindObjectOfType<Il2Cpp.EquipButtonManager>();
+            if (equipMgr != null && equipMgr.utility1Spawner?.Attachments != null)
+            {
+                foreach (var att in equipMgr.utility1Spawner.Attachments)
+                {
+                    if (att != null && att.name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        var mf = att.GetComponentInChildren<MeshFilter>(true);
+                        if (mf != null && mf.sharedMesh != null) return mf.sharedMesh;
+                    }
+                }
+            }
+
+            foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
+            {
+                if (go != null && go.scene.name == null && go.name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var mf = go.GetComponentInChildren<MeshFilter>(true);
+                    if (mf != null && mf.sharedMesh != null) return mf.sharedMesh;
+                }
+            }
+        }
+        catch { }
+
+        return fallback();
+    }
+
+    private static Material ResolveGrenadeMaterial(string keyword, Color fallbackColor)
+    {
+        try
+        {
+            var equipMgr = UnityEngine.Object.FindObjectOfType<Il2Cpp.EquipButtonManager>();
+            if (equipMgr != null && equipMgr.utility1Spawner?.Attachments != null)
+            {
+                foreach (var att in equipMgr.utility1Spawner.Attachments)
+                {
+                    if (att != null && att.name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        var mr = att.GetComponentInChildren<MeshRenderer>(true);
+                        if (mr != null && mr.sharedMaterial != null) return mr.sharedMaterial;
+                    }
+                }
+            }
+        }
+        catch { }
+
+        var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        var mat = new Material(shader) { color = fallbackColor };
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", fallbackColor);
+        return mat;
+    }
+
+    private static Mesh CreateFallbackImpactMesh()
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        go.transform.localScale = new Vector3(0.06f, 0.08f, 0.06f);
+        var mesh = go.GetComponent<MeshFilter>()?.sharedMesh;
+        GameObject.DestroyImmediate(go);
+        return mesh;
+    }
+
+    private static Mesh CreateFallbackFragMesh()
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        go.transform.localScale = new Vector3(0.055f, 0.045f, 0.055f);
         var mesh = go.GetComponent<MeshFilter>()?.sharedMesh;
         GameObject.DestroyImmediate(go);
         return mesh;

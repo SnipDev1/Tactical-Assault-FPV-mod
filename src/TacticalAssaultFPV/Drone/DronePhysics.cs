@@ -296,10 +296,65 @@ public class DronePhysics : MonoBehaviour
         }
     }
 
+    private void CheckPayloadSelectInput()
+    {
+        if (_grabbable == null) _grabbable = GetComponent<HVRGrabbable>();
+        if (_grabbable == null || !_grabbable.IsHandGrabbed || _grabbable.IsSocketed) return;
+
+        var left = Il2CppHurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.LeftController
+                ?? Il2CppHurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.LeftXRInputController;
+        var right = Il2CppHurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.RightController
+                 ?? Il2CppHurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.RightXRInputController;
+
+        bool topButtonPressed = false;
+        var handGrabber = _grabbable.PrimaryGrabber?.TryCast<Il2CppHurricaneVR.Framework.Core.Grabbers.HVRHandGrabber>();
+        if (handGrabber != null)
+        {
+            if (handGrabber.HandSide == Il2CppHurricaneVR.Framework.Shared.HVRHandSide.Left && left != null)
+            {
+                if (left.SecondaryButtonState.JustActivated) topButtonPressed = true;
+            }
+            else if (handGrabber.HandSide == Il2CppHurricaneVR.Framework.Shared.HVRHandSide.Right && right != null)
+            {
+                if (right.SecondaryButtonState.JustActivated) topButtonPressed = true;
+            }
+        }
+        else
+        {
+            if (left != null && left.SecondaryButtonState.JustActivated) topButtonPressed = true;
+            else if (right != null && right.SecondaryButtonState.JustActivated) topButtonPressed = true;
+        }
+
+        if (topButtonPressed)
+        {
+            CyclePayload();
+        }
+    }
+
+    public void CyclePayload()
+    {
+        var exp = GetComponent<DroneExplosive>();
+        if (exp == null) return;
+
+        int nextType = ((int)exp.PayloadType + 1) % 3;
+        exp.SetPayloadType((DronePayloadType)nextType);
+
+        // Haptic feedback to the hand holding the drone
+        var handGrabber = _grabbable?.PrimaryGrabber?.TryCast<Il2CppHurricaneVR.Framework.Core.Grabbers.HVRHandGrabber>();
+        var left = Il2CppHurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.LeftController;
+        var right = Il2CppHurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.RightController;
+        var ctrl = (handGrabber != null && handGrabber.HandSide == Il2CppHurricaneVR.Framework.Shared.HVRHandSide.Left) ? left : right;
+        ctrl?.Vibrate(0.6f, 0.12f);
+
+        DroneMotorAudio.PlayPayloadSwitchSound(transform.position, nextType);
+        MelonLoader.MelonLogger.Msg($"[DronePhysics] Switched payload -> {exp.PayloadType}");
+    }
+
     public void Update()
     {
         CheckSocketState();
         CheckPowerOnInput();
+        CheckPayloadSelectInput();
         AnimatePropellers();
         UpdateMotorAudio();
     }

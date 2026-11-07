@@ -609,10 +609,26 @@ public class RCTablet : MonoBehaviour
 
         if (warheadToggle && _pairedDroneExplosive != null)
         {
-            bool newWarheadState = !_pairedDroneExplosive.IsArmed;
-            _pairedDroneExplosive.SetArmed(newWarheadState);
-            _isWarheadArmed = newWarheadState;
-            MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button Y Pressed: Drone #{_currentDroneIndex + 1} Warhead Armed = {_isWarheadArmed}");
+            if (_pairedDroneExplosive.PayloadType == DronePayloadType.Kamikaze)
+            {
+                bool newWarheadState = !_pairedDroneExplosive.IsArmed;
+                _pairedDroneExplosive.SetArmed(newWarheadState);
+                _isWarheadArmed = newWarheadState;
+                MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button Y Pressed: Drone #{_currentDroneIndex + 1} Warhead Armed = {_isWarheadArmed}");
+            }
+            else
+            {
+                if (_pairedDroneExplosive.DropState == DropPayloadState.Loaded)
+                {
+                    _pairedDroneExplosive.PrimeDrop();
+                    MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button Y Pressed (1/2): Primed payload drop for Drone #{_currentDroneIndex + 1} - tap again to drop!");
+                }
+                else if (_pairedDroneExplosive.DropState == DropPayloadState.Primed)
+                {
+                    _pairedDroneExplosive.ReleasePayload();
+                    MelonLoader.MelonLogger.Msg($"[RCTablet] Left Button Y Pressed (2/2): Payload DROPPED from Drone #{_currentDroneIndex + 1}!");
+                }
+            }
         }
 
         // Right Controller Smooth Continuous Zoom (Hold A = Zoom In, Hold B = Zoom Out: 1.0x <-> 10.0x)
@@ -807,22 +823,34 @@ public class RCTablet : MonoBehaviour
 
         bool flightArmed = _pairedDronePhysics.IsArmed;
         bool warheadArmed = _pairedDroneExplosive != null && _pairedDroneExplosive.IsArmed;
+        var payloadType = _pairedDroneExplosive?.PayloadType ?? DronePayloadType.Kamikaze;
+        var dropState = _pairedDroneExplosive?.DropState ?? DropPayloadState.Loaded;
 
-        string flightMode = flightArmed ? "ARM [FLIGHT]" : "DISARM [SAFE]";
-        string droneTag = $"DRN {currentDroneNum}/{totalDrones}";
-
-        Color statusColor;
-        if (warheadArmed)
+        string flightMode;
+        if (payloadType == DronePayloadType.Kamikaze)
         {
-            statusColor = Color.red;
-        }
-        else if (flightArmed)
-        {
-            statusColor = Color.green;
+            flightMode = flightArmed ? "ARM [FLIGHT]" : "DISARM [SAFE]";
         }
         else
         {
-            statusColor = new Color(0.2f, 0.85f, 1.0f); // Soft cyan
+            string pName = payloadType == DronePayloadType.DropImpact ? "IMPACT" : "FRAG";
+            flightMode = flightArmed ? $"DROP [{pName}]" : "DISARM [SAFE]";
+        }
+        string droneTag = $"DRN {currentDroneNum}/{totalDrones}";
+
+        Color statusColor;
+        if (payloadType == DronePayloadType.Kamikaze)
+        {
+            if (warheadArmed) statusColor = Color.red;
+            else if (flightArmed) statusColor = Color.green;
+            else statusColor = new Color(0.2f, 0.85f, 1.0f);
+        }
+        else
+        {
+            if (dropState == DropPayloadState.Primed) statusColor = Color.yellow;
+            else if (dropState == DropPayloadState.Dropped) statusColor = new Color(0.7f, 0.7f, 0.7f);
+            else if (flightArmed) statusColor = Color.green;
+            else statusColor = new Color(0.2f, 0.85f, 1.0f);
         }
         _osdText.color = statusColor;
 
@@ -832,12 +860,23 @@ public class RCTablet : MonoBehaviour
         float zoom = _pairedDroneCamera?.CurrentZoom ?? 1.0f;
         float battery = (_pairedDronePhysics != null && _droneBatteries.TryGetValue(_pairedDronePhysics.gameObject, out float bat)) ? bat : _batteryVoltage;
 
+        string banner = "";
+        if (payloadType == DronePayloadType.Kamikaze)
+        {
+            if (warheadArmed) banner = "    - - [ ! WARHEAD ARMED ! ] - -\n";
+        }
+        else
+        {
+            if (dropState == DropPayloadState.Primed) banner = "  - - [ ! DROP READY - TAP AGAIN ! ] - -\n";
+            else if (dropState == DropPayloadState.Dropped) banner = "       - - [ PAYLOAD DROPPED ] - -\n";
+        }
+
         // Monospace-aligned Betaflight / DJI FPV style OSD layout:
         // Reticle [ + ] ALWAYS remains dead center in all flight/armed states!
         string lineTop = $"{flightMode,-15} {droneTag,8} {battery:F1}V\n";
-        string lineMid = warheadArmed 
-            ? "    - - [ ! WARHEAD ARMED ! ] - -\n        - -  [ + ]  - -\n\n" 
-            : "\n        - -  [ + ]  - -\n\n";
+        string lineMid = !string.IsNullOrEmpty(banner)
+            ? $"{banner}        - -  [ + ]  - -\n\n"
+            : $"\n        - -  [ + ]  - -\n\n";
         string lineBot = $"CAM {camTilt:F0}° [{zoom:F1}X]  ALT {altitude:F1}M  SPD {speed:F1}M/S    [R-STICK]";
 
         _osdText.text = lineTop + lineMid + lineBot;

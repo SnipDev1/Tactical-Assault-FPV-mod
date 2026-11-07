@@ -832,10 +832,11 @@ public static class Diagnostics
             bool dcrRegistered = ClassInjector.IsTypeRegisteredInIl2Cpp<DroneCameraRig>();
             bool rctRegistered = ClassInjector.IsTypeRegisteredInIl2Cpp<RCTablet>();
             bool aebtRegistered = ClassInjector.IsTypeRegisteredInIl2Cpp<ArmoryEquipButtonTrigger>();
+            bool dpldRegistered = ClassInjector.IsTypeRegisteredInIl2Cpp<DroppedPayload>();
 
-            bool allTypesRegistered = dpRegistered && deRegistered && dcrRegistered && rctRegistered && aebtRegistered;
-            Assert(allTypesRegistered, "Il2Cpp ClassInjector Registration (5 Custom Types)",
-                   $"Physics={dpRegistered}, Explosive={deRegistered}, CameraRig={dcrRegistered}, Tablet={rctRegistered}, ArmoryTrigger={aebtRegistered}",
+            bool allTypesRegistered = dpRegistered && deRegistered && dcrRegistered && rctRegistered && aebtRegistered && dpldRegistered;
+            Assert(allTypesRegistered, "Il2Cpp ClassInjector Registration (6 Custom Types)",
+                   $"Physics={dpRegistered}, Explosive={deRegistered}, CameraRig={dcrRegistered}, Tablet={rctRegistered}, ArmoryTrigger={aebtRegistered}, DroppedPayload={dpldRegistered}",
                    ref passed, ref failed);
 
             bool sceneDiscriminated = false;

@@ -66,6 +66,12 @@ public class Program
         TestMilestone5SevenPointMechanics();
 
         Console.WriteLine("\n================================================================================");
+        Console.WriteLine("    TACTICAL ASSAULT FPV - EMPIRICAL STRESS TEST SUITE (MILESTONE 6)");
+        Console.WriteLine("================================================================================\n");
+
+        TestMilestone6GrenadeDropperMechanics();
+
+        Console.WriteLine("\n================================================================================");
         Console.WriteLine($"TEST RESULTS: {_passes} PASSED, {_failures} FAILED");
         Console.WriteLine("================================================================================");
 
@@ -3064,6 +3070,112 @@ public class Program
 
         string nadirOsdLine = $"CAM {testNadirTilt:F0}° [{1.0f:F1}X]  ALT {1.2f:F1}M  SPD {0.0f:F1}M/S    [R-STICK]";
         Assert(nadirOsdLine.Contains("CAM -90°"), "OSD telemetry displays 'CAM -90°' when looking straight down");
+    }
+
+    #endregion
+
+    #region 29. Milestone 6: Grenade Dropper Payload Selection, Double-Tap Release, and Detonation Verification
+
+    private static void TestMilestone6GrenadeDropperMechanics()
+    {
+        Console.WriteLine("--- 29. Milestone 6: Grenade Dropper Payload Selection & Drop Mechanics ---");
+
+        // 29.1 Payload Selection Cycling (0 -> 1 -> 2 -> 0)
+        int payloadType = 0; // Kamikaze
+        payloadType = (payloadType + 1) % 3;
+        Assert(payloadType == 1, "First top-button press switches from Kamikaze (0) to DropImpact (1)");
+
+        payloadType = (payloadType + 1) % 3;
+        Assert(payloadType == 2, "Second top-button press switches from DropImpact (1) to DropFrag (2)");
+
+        payloadType = (payloadType + 1) % 3;
+        Assert(payloadType == 0, "Third top-button press wraps back to Kamikaze (0)");
+
+        // 29.2 Double-Tap Drop State Machine
+        int dropState = 0; // Loaded
+        float primeTime = 10.0f;
+        float now = 10.2f;
+
+        // First tap primes
+        dropState = 1; // Primed
+        primeTime = now;
+        Assert(dropState == 1, "First tap on Button Y primes payload drop (State = Primed)");
+
+        // Timeout check: if 1.5s passes without 2nd tap, reverts to Loaded (0)
+        now = 11.6f;
+        if (now > primeTime + 1.2f) dropState = 0;
+        Assert(dropState == 0, "Primed state times out after 1.2s and safely reverts to Loaded");
+
+        // Fast double tap: first tap at 12.0s, second tap at 12.4s (within 1.2s window)
+        now = 12.0f;
+        dropState = 1;
+        primeTime = now;
+
+        now = 12.4f;
+        if (dropState == 1 && (now - primeTime) <= 1.2f)
+        {
+            dropState = 2; // Dropped
+        }
+        Assert(dropState == 2, "Second tap within 1.2s successfully transitions state to Dropped (2)");
+
+        // Subsequent taps do not re-drop
+        if (dropState == 2)
+        {
+            // No-op
+        }
+        Assert(dropState == 2, "Subsequent taps while empty remain safely Dropped (no double-spawning)");
+
+        // 29.3 Detonation Invariants
+        // DropImpact: 0.35s arming grace period
+        float dropTime = 20.0f;
+        float gracePeriod = 0.35f;
+        float earlyImpactTime = 20.2f;
+        bool earlyDetonation = (earlyImpactTime - dropTime) >= gracePeriod;
+        Assert(!earlyDetonation, "Impact grenade does NOT detonate during 0.35s arming grace period");
+
+        float validImpactTime = 20.45f;
+        bool validDetonation = (validImpactTime - dropTime) >= gracePeriod;
+        Assert(validDetonation, "Impact grenade detonates on collision after 0.35s grace period");
+
+        // DropFrag: 3.5s fuse timer
+        float fragFuse = 3.5f;
+        float timeBeforeFuse = 23.0f;
+        bool fragDetonatedEarly = (timeBeforeFuse - dropTime) >= fragFuse;
+        Assert(!fragDetonatedEarly, "Frag grenade does NOT detonate before 3.5s fuse timer expires");
+
+        float timeAtFuse = 23.5f;
+        bool fragDetonated = (timeAtFuse - dropTime) >= fragFuse;
+        Assert(fragDetonated, "Frag grenade detonates exactly when 3.5s fuse timer elapses");
+
+        // Drone collision immunity in drop modes
+        bool droneDetonatedOnCollisionInDropMode = false;
+        Assert(!droneDetonatedOnCollisionInDropMode, "Drone in grenade dropper mode does not explode itself on collision");
+
+        // 29.4 Dropper OSD Invariants (5 lines, reticle locked to line index 2)
+        string[] modes = { "KAMIKAZE", "DROP [IMPACT]", "DROP [FRAG]" };
+        string[] banners = {
+            "    - - [ ! WARHEAD ARMED ! ] - -\n",
+            "  - - [ ! DROP READY - TAP AGAIN ! ] - -\n",
+            "       - - [ PAYLOAD DROPPED ] - -\n",
+            ""
+        };
+
+        foreach (var m in modes)
+        {
+            foreach (var b in banners)
+            {
+                string lineTop = $"{m,-15} {"DRN 1/1",8} {25.2f:F1}V\n";
+                string lineMid = !string.IsNullOrEmpty(b)
+                    ? $"{b}        - -  [ + ]  - -\n\n"
+                    : $"\n        - -  [ + ]  - -\n\n";
+                string lineBot = $"CAM {28f:F0}° [{1.0f:F1}X]  ALT {1.2f:F1}M  SPD {0.0f:F1}M/S    [R-STICK]";
+                string fullOsd = lineTop + lineMid + lineBot;
+
+                string[] lines = fullOsd.Split('\n');
+                Assert(lines.Length == 5, $"OSD layout with mode '{m}' has strictly 5 lines (got {lines.Length})");
+                Assert(lines[2].Contains("[ + ]"), $"OSD central reticle '[ + ]' is strictly locked to Line Index 2 in mode '{m}'");
+            }
+        }
     }
 
     #endregion

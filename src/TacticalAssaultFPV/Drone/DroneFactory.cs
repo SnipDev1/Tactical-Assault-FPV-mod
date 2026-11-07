@@ -113,7 +113,7 @@ public static class DroneFactory
             props[i] = prop.transform;
         }
 
-        // Warhead payload (Contact bomb mounted under drone belly)
+        // Warhead payloads under drone belly (Kamikaze bomb, Drop Impact grenade, Drop Frag grenade)
         GameObject warhead = new GameObject("Warhead_Charge");
         warhead.transform.SetParent(visualRoot.transform, false);
         warhead.transform.localPosition = Vector3.zero;
@@ -122,6 +122,26 @@ public static class DroneFactory
         bombFilter.sharedMesh = DroneModelAssets.BombMesh;
         var bombRenderer = warhead.AddComponent<MeshRenderer>();
         bombRenderer.sharedMaterial = DroneModelAssets.BombMaterial;
+
+        GameObject impactObj = new GameObject("Payload_Impact");
+        impactObj.transform.SetParent(visualRoot.transform, false);
+        impactObj.transform.localPosition = new Vector3(0f, -0.028f, 0.01f);
+        impactObj.transform.localRotation = Quaternion.identity;
+        var impactFilter = impactObj.AddComponent<MeshFilter>();
+        impactFilter.sharedMesh = DroneModelAssets.ImpactGrenadeMesh;
+        var impactRenderer = impactObj.AddComponent<MeshRenderer>();
+        impactRenderer.sharedMaterial = DroneModelAssets.ImpactGrenadeMaterial;
+        impactObj.SetActive(false);
+
+        GameObject fragObj = new GameObject("Payload_Frag");
+        fragObj.transform.SetParent(visualRoot.transform, false);
+        fragObj.transform.localPosition = new Vector3(0f, -0.028f, 0.01f);
+        fragObj.transform.localRotation = Quaternion.identity;
+        var fragFilter = fragObj.AddComponent<MeshFilter>();
+        fragFilter.sharedMesh = DroneModelAssets.FragGrenadeMesh;
+        var fragRenderer = fragObj.AddComponent<MeshRenderer>();
+        fragRenderer.sharedMaterial = DroneModelAssets.FragGrenadeMaterial;
+        fragObj.SetActive(false);
 
         // Status Power LED (unlit dark until powered on by pilot trigger)
         GameObject led = new GameObject("Status_LED");
@@ -142,7 +162,8 @@ public static class DroneFactory
         physics.MotorAudio = motorAudio;
         physics.StatusLED = led;
 
-        drone.AddComponent<DroneExplosive>();
+        DroneExplosive explosive = drone.AddComponent<DroneExplosive>();
+        explosive.PayloadVisuals = new GameObject[] { warhead, impactObj, fragObj };
         drone.AddComponent<DroneCameraRig>();
 
         // 7. Tune native HVRGrabbable and align HVRPosableGrabPoint to drone body center (D5)
