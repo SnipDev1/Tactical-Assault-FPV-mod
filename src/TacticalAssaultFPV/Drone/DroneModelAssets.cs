@@ -26,37 +26,121 @@ public static class DroneModelAssets
     private static GameObject _cachedFragPrefab;
 
     [HideFromIl2Cpp]
-    public static Mesh BodyMesh => _bodyMesh ??= LoadMeshResource("drone_body.mesh");
+    public static Mesh BodyMesh
+    {
+        get
+        {
+            if (_bodyMesh == null || !_bodyMesh) _bodyMesh = LoadMeshResource("drone_body.mesh");
+            return _bodyMesh;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Mesh PropMesh => _propMesh ??= LoadMeshResource("drone_prop.mesh");
+    public static Mesh PropMesh
+    {
+        get
+        {
+            if (_propMesh == null || !_propMesh) _propMesh = LoadMeshResource("drone_prop.mesh");
+            return _propMesh;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Mesh LampMesh => _lampMesh ??= LoadMeshResource("drone_lamp.mesh");
+    public static Mesh LampMesh
+    {
+        get
+        {
+            if (_lampMesh == null || !_lampMesh) _lampMesh = LoadMeshResource("drone_lamp.mesh");
+            return _lampMesh;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Mesh BombMesh => _bombMesh ??= LoadMeshResource("drone_bomb.mesh");
+    public static Mesh BombMesh
+    {
+        get
+        {
+            if (_bombMesh == null || !_bombMesh) _bombMesh = LoadMeshResource("drone_bomb.mesh");
+            return _bombMesh;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Material DroneMaterial => _droneMaterial ??= CreateTexturedMaterial("drone_tex.png");
+    public static Material DroneMaterial
+    {
+        get
+        {
+            if (_droneMaterial == null || !_droneMaterial) _droneMaterial = CreateTexturedMaterial("drone_tex.png");
+            return _droneMaterial;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Material BombMaterial => _bombMaterial ??= CreateTexturedMaterial("bomb_tex.png");
+    public static Material BombMaterial
+    {
+        get
+        {
+            if (_bombMaterial == null || !_bombMaterial) _bombMaterial = CreateTexturedMaterial("bomb_tex.png");
+            return _bombMaterial;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Material LampMaterial => _lampMaterial ??= CreateLampMaterial();
+    public static Material LampMaterial
+    {
+        get
+        {
+            if (_lampMaterial == null || !_lampMaterial) _lampMaterial = CreateLampMaterial();
+            return _lampMaterial;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Mesh ImpactGrenadeMesh => _impactMesh ??= CreateFallbackMesh("ImpactFallback");
+    public static Mesh ImpactGrenadeMesh
+    {
+        get
+        {
+            if (_impactMesh == null || !_impactMesh) _impactMesh = CreateFallbackMesh("ImpactFallback");
+            return _impactMesh;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Material ImpactGrenadeMaterial => _impactMat ??= GetSharedFallbackMaterial(new Color(0.28f, 0.32f, 0.22f));
+    public static Material ImpactGrenadeMaterial
+    {
+        get
+        {
+            if (_impactMat == null || !_impactMat) _impactMat = GetSharedFallbackMaterial(new Color(0.28f, 0.32f, 0.22f));
+            return _impactMat;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Mesh FragGrenadeMesh => _fragMesh ??= CreateFallbackMesh("FragFallback");
+    public static Mesh FragGrenadeMesh
+    {
+        get
+        {
+            if (_fragMesh == null || !_fragMesh) _fragMesh = CreateFallbackMesh("FragFallback");
+            return _fragMesh;
+        }
+    }
 
     [HideFromIl2Cpp]
-    public static Material FragGrenadeMaterial => _fragMat ??= GetSharedFallbackMaterial(new Color(0.20f, 0.28f, 0.16f));
+    public static Material FragGrenadeMaterial
+    {
+        get
+        {
+            if (_fragMat == null || !_fragMat) _fragMat = GetSharedFallbackMaterial(new Color(0.20f, 0.28f, 0.16f));
+            return _fragMat;
+        }
+    }
+
+    [HideFromIl2Cpp]
+    public static void ResetScenePrefabs()
+    {
+        _cachedImpactPrefab = null;
+        _cachedFragPrefab = null;
+    }
 
     private static Mesh LoadMeshResource(string name)
     {
@@ -105,6 +189,7 @@ public static class DroneModelAssets
             mesh.uv = uvs;
             mesh.triangles = triangles;
             mesh.RecalculateBounds();
+            mesh.hideFlags = HideFlags.DontUnloadUnusedAsset | HideFlags.HideAndDontSave;
             return mesh;
         }
         catch (Exception ex)
@@ -128,6 +213,7 @@ public static class DroneModelAssets
         }
         // Two-sided rendering so thin plates/propellers are visible from all angles
         if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+        mat.hideFlags = HideFlags.DontUnloadUnusedAsset | HideFlags.HideAndDontSave;
         return mat;
     }
 
@@ -138,6 +224,7 @@ public static class DroneModelAssets
         var mat = new Material(shader);
         mat.color = new Color(0.12f, 0.12f, 0.12f);
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", new Color(0.12f, 0.12f, 0.12f));
+        mat.hideFlags = HideFlags.DontUnloadUnusedAsset | HideFlags.HideAndDontSave;
         return mat;
     }
 
@@ -156,6 +243,7 @@ public static class DroneModelAssets
             ImageConversion.LoadImage(tex, bytes);
             tex.wrapMode = TextureWrapMode.Repeat;
             tex.filterMode = FilterMode.Bilinear;
+            tex.hideFlags = HideFlags.DontUnloadUnusedAsset | HideFlags.HideAndDontSave;
             return tex;
         }
         catch (Exception ex)
@@ -183,6 +271,7 @@ public static class DroneModelAssets
         var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
         var mesh = go.GetComponent<MeshFilter>()?.sharedMesh;
         GameObject.DestroyImmediate(go);
+        if (mesh != null) mesh.hideFlags = HideFlags.DontUnloadUnusedAsset | HideFlags.HideAndDontSave;
         return mesh;
     }
 
@@ -241,8 +330,8 @@ public static class DroneModelAssets
     private static GameObject FindGrenadePrefab(string keyword)
     {
         bool isImpact = keyword.IndexOf("Impact", StringComparison.OrdinalIgnoreCase) >= 0;
-        if (isImpact && _cachedImpactPrefab != null) return _cachedImpactPrefab;
-        if (!isImpact && _cachedFragPrefab != null) return _cachedFragPrefab;
+        if (isImpact && _cachedImpactPrefab != null && _cachedImpactPrefab) return _cachedImpactPrefab;
+        if (!isImpact && _cachedFragPrefab != null && _cachedFragPrefab) return _cachedFragPrefab;
 
         try
         {
@@ -343,6 +432,7 @@ public static class DroneModelAssets
         var mat = new Material(shader) { color = color };
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
         if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+        mat.hideFlags = HideFlags.DontUnloadUnusedAsset | HideFlags.HideAndDontSave;
         return mat;
     }
 }

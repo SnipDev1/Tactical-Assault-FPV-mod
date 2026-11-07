@@ -390,7 +390,8 @@ public class ModMain : MelonMod
                     foreach (var go in __instance.menusToEnable) if (go != null) go.SetActive(true);
                 }
 
-                FPVLoadoutIntegration.SelectLoadoutMode(FPVLoadoutIntegration.FPVLoadoutMode.ControllerKit);
+                int slot = __instance.name.EndsWith("Slot1") ? 1 : 2;
+                FPVLoadoutIntegration.SelectSlotMode(slot, FPVLoadoutIntegration.FPVUtilitySlotMode.ControllerKit);
                 return false;
             }
             else if (__instance.name.StartsWith("FPV_Drone_Button"))
@@ -405,7 +406,8 @@ public class ModMain : MelonMod
                     foreach (var go in __instance.menusToEnable) if (go != null) go.SetActive(true);
                 }
 
-                FPVLoadoutIntegration.SelectLoadoutMode(FPVLoadoutIntegration.FPVLoadoutMode.DualDrone);
+                int slot = __instance.name.EndsWith("Slot1") ? 1 : 2;
+                FPVLoadoutIntegration.SelectSlotMode(slot, FPVLoadoutIntegration.FPVUtilitySlotMode.DroneOnly);
                 return false;
             }
 
@@ -423,14 +425,12 @@ public class ModMain : MelonMod
         {
             if (__instance == null || __instance.transform == null) return true;
 
-            if (FPVLoadoutIntegration.CurrentLoadoutMode != FPVLoadoutIntegration.FPVLoadoutMode.None)
-            {
-                if (__instance.utility1 || __instance.utility2)
-                {
-                    // Skip original grenade routine completely so impact grenades never spawn into our sockets
-                    return false;
-                }
-            }
+            string sName = __instance.name.ToLower();
+            bool isSlot1 = __instance.utility1 || sName.Contains("utility1");
+            bool isSlot2 = __instance.utility2 || sName.Contains("utility2");
+
+            if (isSlot1 && FPVLoadoutIntegration.IsSlot1FPV) return false;
+            if (isSlot2 && FPVLoadoutIntegration.IsSlot2FPV) return false;
 
             return true;
         }

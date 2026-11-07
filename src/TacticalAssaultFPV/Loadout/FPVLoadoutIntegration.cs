@@ -18,12 +18,53 @@ public static class FPVLoadoutIntegration
     public enum FPVLoadoutMode
     {
         None,
-        ControllerKit, // Controller/Tablet in utility 2, Drone in utility 1
-        DualDrone      // Drone in utility 1, Drone in utility 2
+        ControllerKit,
+        DualDrone
     }
 
-    public static FPVLoadoutMode CurrentLoadoutMode { get; set; } = FPVLoadoutMode.None;
-    public static bool IsFPVDroneSelected => CurrentLoadoutMode != FPVLoadoutMode.None;
+    public enum FPVUtilitySlotMode
+    {
+        Standard,
+        ControllerKit,
+        DroneOnly
+    }
+
+    public static FPVUtilitySlotMode Slot1Mode { get; set; } = FPVUtilitySlotMode.Standard;
+    public static FPVUtilitySlotMode Slot2Mode { get; set; } = FPVUtilitySlotMode.Standard;
+
+    public static bool IsSlot1FPV => Slot1Mode != FPVUtilitySlotMode.Standard;
+    public static bool IsSlot2FPV => Slot2Mode != FPVUtilitySlotMode.Standard;
+    public static bool IsFPVDroneSelected => IsSlot1FPV || IsSlot2FPV;
+
+    public static FPVLoadoutMode CurrentLoadoutMode
+    {
+        get
+        {
+            if (Slot1Mode == FPVUtilitySlotMode.DroneOnly && Slot2Mode == FPVUtilitySlotMode.DroneOnly)
+                return FPVLoadoutMode.DualDrone;
+            if (IsSlot1FPV || IsSlot2FPV)
+                return FPVLoadoutMode.ControllerKit;
+            return FPVLoadoutMode.None;
+        }
+        set
+        {
+            if (value == FPVLoadoutMode.None)
+            {
+                Slot1Mode = FPVUtilitySlotMode.Standard;
+                Slot2Mode = FPVUtilitySlotMode.Standard;
+            }
+            else if (value == FPVLoadoutMode.ControllerKit)
+            {
+                Slot1Mode = FPVUtilitySlotMode.DroneOnly;
+                Slot2Mode = FPVUtilitySlotMode.ControllerKit;
+            }
+            else if (value == FPVLoadoutMode.DualDrone)
+            {
+                Slot1Mode = FPVUtilitySlotMode.DroneOnly;
+                Slot2Mode = FPVUtilitySlotMode.DroneOnly;
+            }
+        }
+    }
 
     private static GameObject _armoryTerminal;
     private static GameObject _stationDrone;
@@ -197,6 +238,56 @@ public static class FPVLoadoutIntegration
         }
     }
 
+    public static void SelectSlotMode(int slot, FPVUtilitySlotMode mode)
+    {
+        try
+        {
+            if (slot == 1)
+            {
+                Slot1Mode = mode;
+                var u1 = UnityEngine.Object.FindObjectOfType<UtilityOneSelect>();
+                if (u1 == null)
+                {
+                    var all = Resources.FindObjectsOfTypeAll<UtilityOneSelect>();
+                    if (all.Length > 0) u1 = all[0];
+                }
+                if (u1 != null && u1.transform.childCount > 0)
+                {
+                    int idx = u1.transform.childCount - 1;
+                    u1.selectedUtilityOne = idx;
+                    string label = (mode == FPVUtilitySlotMode.ControllerKit) ? "FPV CONTROLLER" : "FPV DRONE";
+                    Color col = (mode == FPVUtilitySlotMode.ControllerKit) ? new Color(0.2f, 0.85f, 1.0f) : new Color(0.2f, 1.0f, 0.35f);
+                    SetPreviewText(u1.transform.GetChild(idx), label, col);
+                    u1.SelectWeapon();
+                }
+            }
+            else
+            {
+                Slot2Mode = mode;
+                var u2 = UnityEngine.Object.FindObjectOfType<UtilityTwoSelect>();
+                if (u2 == null)
+                {
+                    var all = Resources.FindObjectsOfTypeAll<UtilityTwoSelect>();
+                    if (all.Length > 0) u2 = all[0];
+                }
+                if (u2 != null && u2.transform.childCount > 0)
+                {
+                    int idx = u2.transform.childCount - 1;
+                    u2.selectedUtilityTwo = idx;
+                    string label = (mode == FPVUtilitySlotMode.ControllerKit) ? "FPV CONTROLLER" : "FPV DRONE";
+                    Color col = (mode == FPVUtilitySlotMode.ControllerKit) ? new Color(0.2f, 0.85f, 1.0f) : new Color(0.2f, 1.0f, 0.35f);
+                    SetPreviewText(u2.transform.GetChild(idx), label, col);
+                    u2.SelectWeapon();
+                }
+            }
+            MelonLoader.MelonLogger.Msg($"[Loadout] SelectSlotMode(Slot {slot}, {mode}): Slot1Mode={Slot1Mode}, Slot2Mode={Slot2Mode}");
+        }
+        catch (Exception ex)
+        {
+            MelonLoader.MelonLogger.Error($"Error in SelectSlotMode: {ex}");
+        }
+    }
+
     public static void SelectLoadoutMode(FPVLoadoutMode mode)
     {
         try
@@ -204,53 +295,15 @@ public static class FPVLoadoutIntegration
             CurrentLoadoutMode = mode;
             MelonLoader.MelonLogger.Msg($"[Loadout] Selected FPV Loadout Mode: {mode}");
 
-            var u1 = UnityEngine.Object.FindObjectOfType<UtilityOneSelect>();
-            if (u1 == null)
-            {
-                var all = Resources.FindObjectsOfTypeAll<UtilityOneSelect>();
-                if (all.Length > 0) u1 = all[0];
-            }
-
-            var u2 = UnityEngine.Object.FindObjectOfType<UtilityTwoSelect>();
-            if (u2 == null)
-            {
-                var all = Resources.FindObjectsOfTypeAll<UtilityTwoSelect>();
-                if (all.Length > 0) u2 = all[0];
-            }
-
             if (mode == FPVLoadoutMode.ControllerKit)
             {
-                if (u1 != null && u1.transform.childCount > 0)
-                {
-                    int idx = u1.transform.childCount - 1;
-                    u1.selectedUtilityOne = idx;
-                    SetPreviewText(u1.transform.GetChild(idx), "FPV DRONE", new Color(0.2f, 1.0f, 0.35f));
-                    u1.SelectWeapon();
-                }
-                if (u2 != null && u2.transform.childCount > 0)
-                {
-                    int idx = u2.transform.childCount - 1;
-                    u2.selectedUtilityTwo = idx;
-                    SetPreviewText(u2.transform.GetChild(idx), "FPV CONTROLLER", new Color(0.2f, 0.85f, 1.0f));
-                    u2.SelectWeapon();
-                }
+                SelectSlotMode(1, FPVUtilitySlotMode.DroneOnly);
+                SelectSlotMode(2, FPVUtilitySlotMode.ControllerKit);
             }
             else if (mode == FPVLoadoutMode.DualDrone)
             {
-                if (u1 != null && u1.transform.childCount > 0)
-                {
-                    int idx = u1.transform.childCount - 1;
-                    u1.selectedUtilityOne = idx;
-                    SetPreviewText(u1.transform.GetChild(idx), "FPV DRONE", new Color(0.2f, 1.0f, 0.35f));
-                    u1.SelectWeapon();
-                }
-                if (u2 != null && u2.transform.childCount > 0)
-                {
-                    int idx = u2.transform.childCount - 1;
-                    u2.selectedUtilityTwo = idx;
-                    SetPreviewText(u2.transform.GetChild(idx), "FPV DRONE", new Color(0.2f, 1.0f, 0.35f));
-                    u2.SelectWeapon();
-                }
+                SelectSlotMode(1, FPVUtilitySlotMode.DroneOnly);
+                SelectSlotMode(2, FPVUtilitySlotMode.DroneOnly);
             }
         }
         catch (Exception ex)
@@ -290,8 +343,15 @@ public static class FPVLoadoutIntegration
     {
         try
         {
-            if (CurrentLoadoutMode == FPVLoadoutMode.None) return;
             if (spawner == null) return;
+
+            string sName = spawner.name.ToLower();
+            bool isSlot1 = (slotNum == 1) || spawner.utility1 || sName.Contains("utility1");
+            bool isSlot2 = (slotNum == 2) || spawner.utility2 || sName.Contains("utility2");
+            bool isSecondary = sName.Contains("11") || sName.Contains("1_1") || sName.Contains("22") || sName.Contains("2_2");
+
+            FPVUtilitySlotMode slotMode = isSlot1 ? Slot1Mode : (isSlot2 ? Slot2Mode : FPVUtilitySlotMode.Standard);
+            if (slotMode == FPVUtilitySlotMode.Standard) return;
 
             // Debounce spawner calls within 0.2s to prevent duplicate execution within the same frame
             if (_spawnerCooldowns.TryGetValue(spawner, out float lastTime) && Time.time - lastTime < 0.2f)
@@ -321,38 +381,18 @@ public static class FPVLoadoutIntegration
 
             Vector3 pos = socket.transform.position;
             Quaternion rot = socket.transform.rotation;
-            string sName = spawner.name.ToLower();
 
-            if (CurrentLoadoutMode == FPVLoadoutMode.ControllerKit)
+            bool isTabletSlot = (slotMode == FPVUtilitySlotMode.ControllerKit) && !isSecondary;
+
+            if (isTabletSlot)
             {
-                // In ControllerKit:
-                // Utility2Spawner gets the RC Tablet.
-                // Utility1Spawner, Utility1_1Spawner, and Utility2_2Spawner each get a Drone! (Total = 3 Drones + 1 Tablet)
-                bool isTabletSlot = (sName == "utility2spawner" || (slotNum == 2 && !sName.Contains("_2") && !sName.Contains("22")));
-
-                if (isTabletSlot)
-                {
-                    if (_activeEquippedTablet != null) UnityEngine.Object.Destroy(_activeEquippedTablet);
-                    _activeEquippedTablet = DroneFactory.CreateRCTablet(pos, rot);
-                    var grabbable = _activeEquippedTablet.GetComponent<HVRGrabbable>();
-                    bool grabbed = socket.TryGrab(grabbable, true, true);
-                    MelonLoader.MelonLogger.Msg($"[Loadout] Equipped RC Tablet into socket: {socket.gameObject.name} (Grabbed={grabbed})");
-                }
-                else
-                {
-                    GameObject drone = DroneFactory.CreateDrone(pos, rot);
-                    var grabbable = drone.GetComponent<HVRGrabbable>();
-                    bool grabbed = socket.TryGrab(grabbable, true, true);
-                    if (!grabbed)
-                    {
-                        drone.transform.position = pos;
-                        drone.transform.rotation = rot;
-                    }
-                    RegisterActiveDrone(drone);
-                    MelonLoader.MelonLogger.Msg($"[Loadout] Equipped FPV Drone into socket: {socket.gameObject.name} (Grabbed={grabbed}, Total drones: {_activeDrones.Count})");
-                }
+                if (_activeEquippedTablet != null) UnityEngine.Object.Destroy(_activeEquippedTablet);
+                _activeEquippedTablet = DroneFactory.CreateRCTablet(pos, rot);
+                var grabbable = _activeEquippedTablet.GetComponent<HVRGrabbable>();
+                bool grabbed = socket.TryGrab(grabbable, true, true);
+                MelonLoader.MelonLogger.Msg($"[Loadout] Equipped RC Tablet into socket: {socket.gameObject.name} (Grabbed={grabbed})");
             }
-            else if (CurrentLoadoutMode == FPVLoadoutMode.DualDrone)
+            else
             {
                 GameObject drone = DroneFactory.CreateDrone(pos, rot);
                 var grabbable = drone.GetComponent<HVRGrabbable>();
@@ -363,7 +403,7 @@ public static class FPVLoadoutIntegration
                     drone.transform.rotation = rot;
                 }
                 RegisterActiveDrone(drone);
-                MelonLoader.MelonLogger.Msg($"[Loadout] Equipped FPV Drone into socket: {socket.gameObject.name} (Grabbed={grabbed})");
+                MelonLoader.MelonLogger.Msg($"[Loadout] Equipped FPV Drone into socket: {socket.gameObject.name} (Grabbed={grabbed}, Total drones: {_activeDrones.Count})");
             }
         }
         catch (Exception ex)
@@ -471,11 +511,10 @@ public static class FPVLoadoutIntegration
             u.transform.GetChild(i).gameObject.SetActive(i == u.selectedUtilityOne);
         }
 
-        if (!isDrone && CurrentLoadoutMode != FPVLoadoutMode.None)
+        if (!isDrone && Slot1Mode != FPVUtilitySlotMode.Standard)
         {
-            CurrentLoadoutMode = FPVLoadoutMode.None;
-            RestoreAllSocketFilters();
-            MelonLoader.MelonLogger.Msg("[Loadout] Player chose standard utility 1, FPV mode cleared.");
+            Slot1Mode = FPVUtilitySlotMode.Standard;
+            MelonLoader.MelonLogger.Msg("[Loadout] Player chose standard utility 1, Slot 1 FPV cleared.");
         }
     }
 
@@ -490,11 +529,10 @@ public static class FPVLoadoutIntegration
             u.transform.GetChild(i).gameObject.SetActive(i == u.selectedUtilityTwo);
         }
 
-        if (!isDrone && CurrentLoadoutMode != FPVLoadoutMode.None)
+        if (!isDrone && Slot2Mode != FPVUtilitySlotMode.Standard)
         {
-            CurrentLoadoutMode = FPVLoadoutMode.None;
-            RestoreAllSocketFilters();
-            MelonLoader.MelonLogger.Msg("[Loadout] Player chose standard utility 2, FPV mode cleared.");
+            Slot2Mode = FPVUtilitySlotMode.Standard;
+            MelonLoader.MelonLogger.Msg("[Loadout] Player chose standard utility 2, Slot 2 FPV cleared.");
         }
     }
 
@@ -512,8 +550,8 @@ public static class FPVLoadoutIntegration
             }
             _lastEquipButtonTime = Time.time;
 
-            MelonLoader.MelonLogger.Msg($"[Loadout] EquipButtonManager.Equip called. CurrentLoadoutMode={CurrentLoadoutMode}");
-            if (CurrentLoadoutMode != FPVLoadoutMode.None && equipManager != null)
+            MelonLoader.MelonLogger.Msg($"[Loadout] EquipButtonManager.Equip called. Slot1Mode={Slot1Mode}, Slot2Mode={Slot2Mode}");
+            if (IsFPVDroneSelected && equipManager != null)
             {
                 _spawnerCooldowns.Clear();
 
@@ -527,11 +565,22 @@ public static class FPVLoadoutIntegration
                     }
                 }
                 _activeDrones.Clear();
+                if (_activeEquippedTablet != null)
+                {
+                    try { UnityEngine.Object.Destroy(_activeEquippedTablet); } catch { }
+                    _activeEquippedTablet = null;
+                }
 
-                if (equipManager.utility1Spawner != null) SpawnForUtilitySpawner(equipManager.utility1Spawner, 1);
-                if (equipManager.utility11Spawner != null) SpawnForUtilitySpawner(equipManager.utility11Spawner, 1);
-                if (equipManager.utility2Spawner != null) SpawnForUtilitySpawner(equipManager.utility2Spawner, 2);
-                if (equipManager.utility22Spawner != null) SpawnForUtilitySpawner(equipManager.utility22Spawner, 2);
+                if (IsSlot1FPV)
+                {
+                    if (equipManager.utility1Spawner != null) SpawnForUtilitySpawner(equipManager.utility1Spawner, 1);
+                    if (equipManager.utility11Spawner != null) SpawnForUtilitySpawner(equipManager.utility11Spawner, 1);
+                }
+                if (IsSlot2FPV)
+                {
+                    if (equipManager.utility2Spawner != null) SpawnForUtilitySpawner(equipManager.utility2Spawner, 2);
+                    if (equipManager.utility22Spawner != null) SpawnForUtilitySpawner(equipManager.utility22Spawner, 2);
+                }
 
                 PrepareAllVestSockets();
                 SyncTabletDrones();
@@ -734,13 +783,26 @@ public static class FPVLoadoutIntegration
     public static void EquipToManagerSockets(EquipButtonManager equipManager)
     {
         if (equipManager == null) return;
-        if (CurrentLoadoutMode == FPVLoadoutMode.None) return;
+        if (!IsFPVDroneSelected) return;
 
         _activeDrones.Clear();
-        if (equipManager.utility1Spawner != null) SpawnForUtilitySpawner(equipManager.utility1Spawner, 1);
-        if (equipManager.utility11Spawner != null) SpawnForUtilitySpawner(equipManager.utility11Spawner, 1);
-        if (equipManager.utility2Spawner != null) SpawnForUtilitySpawner(equipManager.utility2Spawner, 2);
-        if (equipManager.utility22Spawner != null) SpawnForUtilitySpawner(equipManager.utility22Spawner, 2);
+        if (_activeEquippedTablet != null)
+        {
+            try { UnityEngine.Object.Destroy(_activeEquippedTablet); } catch { }
+            _activeEquippedTablet = null;
+        }
+
+        if (IsSlot1FPV)
+        {
+            if (equipManager.utility1Spawner != null) SpawnForUtilitySpawner(equipManager.utility1Spawner, 1);
+            if (equipManager.utility11Spawner != null) SpawnForUtilitySpawner(equipManager.utility11Spawner, 1);
+        }
+        if (IsSlot2FPV)
+        {
+            if (equipManager.utility2Spawner != null) SpawnForUtilitySpawner(equipManager.utility2Spawner, 2);
+            if (equipManager.utility22Spawner != null) SpawnForUtilitySpawner(equipManager.utility22Spawner, 2);
+        }
+        PrepareAllVestSockets();
         SyncTabletDrones();
     }
 
@@ -752,7 +814,7 @@ public static class FPVLoadoutIntegration
 
     public static void EquipToSceneSockets()
     {
-        if (CurrentLoadoutMode == FPVLoadoutMode.None) return;
+        if (!IsFPVDroneSelected) return;
 
         // Clean up destroyed drone references first
         for (int i = _activeDrones.Count - 1; i >= 0; i--)
@@ -760,14 +822,7 @@ public static class FPVLoadoutIntegration
             if (_activeDrones[i] == null) _activeDrones.RemoveAt(i);
         }
 
-        // If all 3 drones and tablet are already alive, do not re-equip destructively
-        if (_activeDrones.Count >= 3 && _activeEquippedTablet != null)
-        {
-            MelonLoader.MelonLogger.Msg($"[Loadout] EquipToSceneSockets: All {_activeDrones.Count} drones and tablet active, syncing only.");
-            PrepareAllVestSockets();
-            SyncTabletDrones();
-            return;
-        }
+        if (_activeEquippedTablet == null) _activeEquippedTablet = null;
 
         _spawnerCooldowns.Clear();
         WeaponAttachmentsSpawner[] spawners = UnityEngine.Object.FindObjectsOfType<WeaponAttachmentsSpawner>();
@@ -776,10 +831,18 @@ public static class FPVLoadoutIntegration
             foreach (var sp in spawners)
             {
                 if (sp == null || sp.HVRSocket == null) continue;
-                if (sp.utility1) SpawnForUtilitySpawner(sp, 1);
-                else if (sp.utility2) SpawnForUtilitySpawner(sp, 2);
+                string sName = sp.name.ToLower();
+                if (sp.utility1 || sName.Contains("utility1"))
+                {
+                    if (IsSlot1FPV) SpawnForUtilitySpawner(sp, 1);
+                }
+                else if (sp.utility2 || sName.Contains("utility2"))
+                {
+                    if (IsSlot2FPV) SpawnForUtilitySpawner(sp, 2);
+                }
             }
         }
+        PrepareAllVestSockets();
         SyncTabletDrones();
     }
 
@@ -877,6 +940,7 @@ public static class FPVLoadoutIntegration
             _activeEquippedDrone = null;
             _activeEquippedTablet = null;
             _activeDrones.Clear();
+            DroneModelAssets.ResetScenePrefabs();
             RestoreAllSocketFilters();
             MelonLoader.MelonLogger.Msg("[Loadout] Scene state cleared: static GameObject references reset.");
         }
