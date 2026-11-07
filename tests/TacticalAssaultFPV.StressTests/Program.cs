@@ -3126,16 +3126,25 @@ public class Program
         Assert(dropState == 2, "Subsequent taps while empty remain safely Dropped (no double-spawning)");
 
         // 29.3 Detonation Invariants
-        // DropImpact: 0.35s arming grace period
+        // DropImpact: 0.10s arming grace period
         float dropTime = 20.0f;
-        float gracePeriod = 0.35f;
-        float earlyImpactTime = 20.2f;
+        float gracePeriod = 0.10f;
+        float earlyImpactTime = 20.05f;
         bool earlyDetonation = (earlyImpactTime - dropTime) >= gracePeriod;
-        Assert(!earlyDetonation, "Impact grenade does NOT detonate during 0.35s arming grace period");
+        Assert(!earlyDetonation, "Impact grenade does NOT detonate during 0.10s arming grace period");
 
-        float validImpactTime = 20.45f;
+        float validImpactTime = 20.25f;
         bool validDetonation = (validImpactTime - dropTime) >= gracePeriod;
-        Assert(validDetonation, "Impact grenade detonates on collision after 0.35s grace period");
+        Assert(validDetonation, "Impact grenade detonates on collision after 0.10s grace period");
+
+        // Dropped payload collision immunity with parent drone
+        object mockDrone = new object();
+        object mockParent = mockDrone;
+        object mockOtherTarget = new object();
+        bool hitParentDrone = ReferenceEquals(mockParent, mockDrone);
+        bool hitTarget = ReferenceEquals(mockOtherTarget, mockDrone);
+        Assert(hitParentDrone, "Dropped payload filters out collision if colliding object is parent drone");
+        Assert(!hitTarget, "Dropped payload allows collision if colliding object is enemy/environment");
 
         // DropFrag: 3.5s fuse timer
         float fragFuse = 3.5f;

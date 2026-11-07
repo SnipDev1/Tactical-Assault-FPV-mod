@@ -22,6 +22,9 @@ public static class DroneModelAssets
     private static Mesh _fragMesh;
     private static Material _fragMat;
 
+    private static GameObject _cachedImpactPrefab;
+    private static GameObject _cachedFragPrefab;
+
     [HideFromIl2Cpp]
     public static Mesh BodyMesh => _bodyMesh ??= LoadMeshResource("drone_body.mesh");
 
@@ -44,16 +47,16 @@ public static class DroneModelAssets
     public static Material LampMaterial => _lampMaterial ??= CreateLampMaterial();
 
     [HideFromIl2Cpp]
-    public static Mesh ImpactGrenadeMesh => _impactMesh ??= ResolveGrenadeMesh("Impact", CreateFallbackImpactMesh);
+    public static Mesh ImpactGrenadeMesh => _impactMesh ??= CreateFallbackMesh("ImpactFallback");
 
     [HideFromIl2Cpp]
-    public static Material ImpactGrenadeMaterial => _impactMat ??= ResolveGrenadeMaterial("Impact", new Color(0.28f, 0.32f, 0.22f));
+    public static Material ImpactGrenadeMaterial => _impactMat ??= GetSharedFallbackMaterial(new Color(0.28f, 0.32f, 0.22f));
 
     [HideFromIl2Cpp]
-    public static Mesh FragGrenadeMesh => _fragMesh ??= ResolveGrenadeMesh("Frag", CreateFallbackFragMesh);
+    public static Mesh FragGrenadeMesh => _fragMesh ??= CreateFallbackMesh("FragFallback");
 
     [HideFromIl2Cpp]
-    public static Material FragGrenadeMaterial => _fragMat ??= ResolveGrenadeMaterial("Frag", new Color(0.20f, 0.28f, 0.16f));
+    public static Material FragGrenadeMaterial => _fragMat ??= GetSharedFallbackMaterial(new Color(0.20f, 0.28f, 0.16f));
 
     private static Mesh LoadMeshResource(string name)
     {
@@ -183,8 +186,64 @@ public static class DroneModelAssets
         return mesh;
     }
 
-    private static Mesh ResolveGrenadeMesh(string keyword, Func<Mesh> fallback)
+    [HideFromIl2Cpp]
+    public static GameObject CreateVisualGrenade(string keyword, string objName)
     {
+        var prefab = FindGrenadePrefab(keyword);
+        if (prefab != null)
+        {
+            try
+            {
+                var clone = UnityEngine.Object.Instantiate(prefab);
+                clone.name = objName;
+
+                // Strip rigidbodies, colliders, and gameplay scripts
+                foreach (var rb in clone.GetComponentsInChildren<Rigidbody>(true))
+                {
+                    try { UnityEngine.Object.DestroyImmediate(rb); } catch { UnityEngine.Object.Destroy(rb); }
+                }
+                foreach (var col in clone.GetComponentsInChildren<Collider>(true))
+                {
+                    try { UnityEngine.Object.DestroyImmediate(col); } catch { UnityEngine.Object.Destroy(col); }
+                }
+                foreach (var mb in clone.GetComponentsInChildren<MonoBehaviour>(true))
+                {
+                    try { UnityEngine.Object.DestroyImmediate(mb); } catch { UnityEngine.Object.Destroy(mb); }
+                }
+
+                // Enable renderers and make materials two-sided
+                foreach (var r in clone.GetComponentsInChildren<Renderer>(true))
+                {
+                    r.enabled = true;
+                    if (r.materials != null)
+                    {
+                        foreach (var mat in r.materials)
+                        {
+                            if (mat != null && mat.HasProperty("_Cull"))
+                            {
+                                mat.SetFloat("_Cull", 0f);
+                            }
+                        }
+                    }
+                }
+
+                return clone;
+            }
+            catch (Exception ex)
+            {
+                MelonLoader.MelonLogger.Warning($"[DroneModelAssets] Failed to clone prefab '{keyword}': {ex.Message}. Falling back to procedural.");
+            }
+        }
+
+        return CreateFallbackGrenade(keyword, objName);
+    }
+
+    private static GameObject FindGrenadePrefab(string keyword)
+    {
+        bool isImpact = keyword.IndexOf("Impact", StringComparison.OrdinalIgnoreCase) >= 0;
+        if (isImpact && _cachedImpactPrefab != null) return _cachedImpactPrefab;
+        if (!isImpact && _cachedFragPrefab != null) return _cachedFragPrefab;
+
         try
         {
             var equipMgr = UnityEngine.Object.FindObjectOfType<Il2Cpp.EquipButtonManager>();
@@ -194,66 +253,96 @@ public static class DroneModelAssets
                 {
                     if (att != null && att.name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        var mf = att.GetComponentInChildren<MeshFilter>(true);
-                        if (mf != null && mf.sharedMesh != null) return mf.sharedMesh;
+                        if (isImpact) _cachedImpactPrefab = att;
+                        else _cachedFragPrefab = att;
+                        return att;
                     }
                 }
+            }
+
+            string resPath = isImpact ? "Weapons/Utilities/Impact_Grenade" : "Weapons/Utilities/Frag_Grenade";
+            var res = Resources.Load<GameObject>(resPath);
+            if (res != null)
+            {
+                if (isImpact) _cachedImpactPrefab = res;
+                else _cachedFragPrefab = res;
+                return res;
             }
 
             foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
             {
                 if (go != null && go.scene.name == null && go.name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    var mf = go.GetComponentInChildren<MeshFilter>(true);
-                    if (mf != null && mf.sharedMesh != null) return mf.sharedMesh;
+                    if (isImpact) _cachedImpactPrefab = go;
+                    else _cachedFragPrefab = go;
+                    return go;
                 }
             }
         }
         catch { }
 
-        return fallback();
+        return null;
     }
 
-    private static Material ResolveGrenadeMaterial(string keyword, Color fallbackColor)
+    private static GameObject CreateFallbackGrenade(string keyword, string objName)
     {
-        try
+        bool isImpact = keyword.IndexOf("Impact", StringComparison.OrdinalIgnoreCase) >= 0;
+        GameObject root = new GameObject(objName);
+
+        // Body
+        var body = GameObject.CreatePrimitive(isImpact ? PrimitiveType.Sphere : PrimitiveType.Capsule);
+        body.name = "Grenade_Body";
+        body.transform.SetParent(root.transform, false);
+        var bodyCol = body.GetComponent<Collider>();
+        if (bodyCol != null) UnityEngine.Object.DestroyImmediate(bodyCol);
+
+        if (isImpact)
         {
-            var equipMgr = UnityEngine.Object.FindObjectOfType<Il2Cpp.EquipButtonManager>();
-            if (equipMgr != null && equipMgr.utility1Spawner?.Attachments != null)
-            {
-                foreach (var att in equipMgr.utility1Spawner.Attachments)
-                {
-                    if (att != null && att.name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var mr = att.GetComponentInChildren<MeshRenderer>(true);
-                        if (mr != null && mr.sharedMaterial != null) return mr.sharedMaterial;
-                    }
-                }
-            }
+            body.transform.localScale = new Vector3(0.065f, 0.08f, 0.065f);
+            var mr = body.GetComponent<MeshRenderer>();
+            if (mr != null) mr.sharedMaterial = GetSharedFallbackMaterial(new Color(0.28f, 0.32f, 0.22f));
         }
-        catch { }
+        else
+        {
+            body.transform.localScale = new Vector3(0.055f, 0.045f, 0.055f);
+            var mr = body.GetComponent<MeshRenderer>();
+            if (mr != null) mr.sharedMaterial = GetSharedFallbackMaterial(new Color(0.20f, 0.28f, 0.16f));
+        }
 
-        var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-        var mat = new Material(shader) { color = fallbackColor };
-        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", fallbackColor);
+        // Spoon (lever)
+        var spoon = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        spoon.name = "Grenade_Spoon";
+        spoon.transform.SetParent(root.transform, false);
+        var spoonCol = spoon.GetComponent<Collider>();
+        if (spoonCol != null) UnityEngine.Object.DestroyImmediate(spoonCol);
+        spoon.transform.localScale = new Vector3(0.012f, 0.075f, 0.006f);
+        spoon.transform.localPosition = new Vector3(0.032f, -0.005f, 0f);
+        spoon.transform.localRotation = Quaternion.Euler(0f, 0f, -8f);
+        var spoonMr = spoon.GetComponent<MeshRenderer>();
+        if (spoonMr != null) spoonMr.sharedMaterial = GetSharedFallbackMaterial(new Color(0.25f, 0.25f, 0.27f));
+
+        // Fuze cap
+        var fuze = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        fuze.name = "Grenade_Fuze";
+        fuze.transform.SetParent(root.transform, false);
+        var fuzeCol = fuze.GetComponent<Collider>();
+        if (fuzeCol != null) UnityEngine.Object.DestroyImmediate(fuzeCol);
+        fuze.transform.localScale = new Vector3(0.018f, 0.012f, 0.018f);
+        fuze.transform.localPosition = new Vector3(0f, 0.045f, 0f);
+        var fuzeMr = fuze.GetComponent<MeshRenderer>();
+        if (fuzeMr != null) fuzeMr.sharedMaterial = GetSharedFallbackMaterial(new Color(0.38f, 0.35f, 0.28f));
+
+        return root;
+    }
+
+    private static Material GetSharedFallbackMaterial(Color color)
+    {
+        var shader = Shader.Find("Universal Render Pipeline/Lit") ??
+                     Shader.Find("Standard") ??
+                     Shader.Find("Diffuse");
+        var mat = new Material(shader) { color = color };
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+        if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
         return mat;
-    }
-
-    private static Mesh CreateFallbackImpactMesh()
-    {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        go.transform.localScale = new Vector3(0.06f, 0.08f, 0.06f);
-        var mesh = go.GetComponent<MeshFilter>()?.sharedMesh;
-        GameObject.DestroyImmediate(go);
-        return mesh;
-    }
-
-    private static Mesh CreateFallbackFragMesh()
-    {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        go.transform.localScale = new Vector3(0.055f, 0.045f, 0.055f);
-        var mesh = go.GetComponent<MeshFilter>()?.sharedMesh;
-        GameObject.DestroyImmediate(go);
-        return mesh;
     }
 }

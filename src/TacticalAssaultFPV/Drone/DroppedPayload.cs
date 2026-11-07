@@ -9,19 +9,21 @@ public class DroppedPayload : MonoBehaviour
     public DroppedPayload(IntPtr ptr) : base(ptr) { }
 
     private DronePayloadType _type;
+    private GameObject _drone;
     private float _dropTime;
     private bool _hasDetonated;
 
     public const float FragFuseTime = 3.5f;
-    public const float ArmingGracePeriod = 0.35f;
+    public const float ArmingGracePeriod = 0.10f;
 
     public bool HasDetonated => _hasDetonated;
     public DronePayloadType PayloadType => _type;
 
     [HideFromIl2Cpp]
-    public void Initialize(DronePayloadType type)
+    public void Initialize(DronePayloadType type, GameObject drone = null)
     {
         _type = type;
+        _drone = drone;
         _dropTime = Time.time;
         _hasDetonated = false;
     }
@@ -43,6 +45,10 @@ public class DroppedPayload : MonoBehaviour
     public void OnCollisionEnter(Collision collision)
     {
         if (_hasDetonated) return;
+
+        // Never detonate on contact with parent drone
+        if (_drone != null && (collision.gameObject == _drone || collision.transform.IsChildOf(_drone.transform)))
+            return;
 
         // Impact grenade: detonates on collision after arming grace period
         if (_type == DronePayloadType.DropImpact)

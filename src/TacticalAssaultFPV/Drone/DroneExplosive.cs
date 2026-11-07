@@ -87,7 +87,7 @@ public class DroneExplosive : MonoBehaviour
 
     private void SpawnDroppedGrenade()
     {
-        Vector3 spawnPos = transform.position + transform.rotation * new Vector3(0f, -0.04f, 0.02f);
+        Vector3 spawnPos = transform.position + transform.rotation * new Vector3(0f, -0.055f, 0.01f);
         Quaternion spawnRot = transform.rotation;
 
         GameObject grenade = new GameObject($"Dropped_{_payloadType}");
@@ -98,32 +98,45 @@ public class DroneExplosive : MonoBehaviour
         rb.mass = 0.45f;
         rb.linearDamping = 0.05f;
         rb.angularDamping = 0.1f;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
         var droneRb = GetComponent<Rigidbody>();
         if (droneRb != null)
         {
-            rb.linearVelocity = droneRb.linearVelocity;
-            rb.angularVelocity = droneRb.angularVelocity + UnityEngine.Random.insideUnitSphere * 2.0f;
+            rb.linearVelocity = droneRb.linearVelocity - transform.up * 0.3f;
+            rb.angularVelocity = droneRb.angularVelocity + UnityEngine.Random.insideUnitSphere * 1.5f;
         }
 
         var col = grenade.AddComponent<SphereCollider>();
         col.radius = 0.035f;
 
-        var filter = grenade.AddComponent<MeshFilter>();
-        var renderer = grenade.AddComponent<MeshRenderer>();
-        if (_payloadType == DronePayloadType.DropImpact)
+        var pMat = new PhysicsMaterial
         {
-            filter.sharedMesh = DroneModelAssets.ImpactGrenadeMesh;
-            renderer.sharedMaterial = DroneModelAssets.ImpactGrenadeMaterial;
-        }
-        else
+            bounciness = 0.25f,
+            dynamicFriction = 0.6f,
+            staticFriction = 0.6f,
+            bounceCombine = PhysicsMaterialCombine.Average
+        };
+        col.sharedMaterial = pMat;
+
+        // Ignore collisions against all drone hull colliders
+        foreach (var droneCol in GetComponentsInChildren<Collider>(true))
         {
-            filter.sharedMesh = DroneModelAssets.FragGrenadeMesh;
-            renderer.sharedMaterial = DroneModelAssets.FragGrenadeMaterial;
+            if (droneCol != null)
+            {
+                Physics.IgnoreCollision(col, droneCol, true);
+            }
         }
 
+        // Attach complete multi-part grenade visual
+        string keyword = (_payloadType == DronePayloadType.DropImpact) ? "Impact" : "Frag";
+        var visual = DroneModelAssets.CreateVisualGrenade(keyword, "Visual");
+        visual.transform.SetParent(grenade.transform, false);
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localRotation = Quaternion.identity;
+
         var payload = grenade.AddComponent<DroppedPayload>();
-        payload.Initialize(_payloadType);
+        payload.Initialize(_payloadType, gameObject);
     }
 
     public void Update()

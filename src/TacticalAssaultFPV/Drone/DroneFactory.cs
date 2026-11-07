@@ -123,24 +123,16 @@ public static class DroneFactory
         var bombRenderer = warhead.AddComponent<MeshRenderer>();
         bombRenderer.sharedMaterial = DroneModelAssets.BombMaterial;
 
-        GameObject impactObj = new GameObject("Payload_Impact");
+        GameObject impactObj = DroneModelAssets.CreateVisualGrenade("Impact", "Payload_Impact");
         impactObj.transform.SetParent(visualRoot.transform, false);
         impactObj.transform.localPosition = new Vector3(0f, -0.028f, 0.01f);
         impactObj.transform.localRotation = Quaternion.identity;
-        var impactFilter = impactObj.AddComponent<MeshFilter>();
-        impactFilter.sharedMesh = DroneModelAssets.ImpactGrenadeMesh;
-        var impactRenderer = impactObj.AddComponent<MeshRenderer>();
-        impactRenderer.sharedMaterial = DroneModelAssets.ImpactGrenadeMaterial;
         impactObj.SetActive(false);
 
-        GameObject fragObj = new GameObject("Payload_Frag");
+        GameObject fragObj = DroneModelAssets.CreateVisualGrenade("Frag", "Payload_Frag");
         fragObj.transform.SetParent(visualRoot.transform, false);
         fragObj.transform.localPosition = new Vector3(0f, -0.028f, 0.01f);
         fragObj.transform.localRotation = Quaternion.identity;
-        var fragFilter = fragObj.AddComponent<MeshFilter>();
-        fragFilter.sharedMesh = DroneModelAssets.FragGrenadeMesh;
-        var fragRenderer = fragObj.AddComponent<MeshRenderer>();
-        fragRenderer.sharedMaterial = DroneModelAssets.FragGrenadeMaterial;
         fragObj.SetActive(false);
 
         // Status Power LED (unlit dark until powered on by pilot trigger)
