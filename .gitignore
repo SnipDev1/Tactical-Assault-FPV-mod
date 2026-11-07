@@ -14,7 +14,8 @@ obj/
 
 # Proprietary Game / Decompiled / Tool Interop Assemblies
 interop/
-tools/
+tools/*
+!tools/convert_models.py
 dump/
 backups/
 

@@ -78,6 +78,10 @@
       <HintPath>$(InteropPath)/UnityEngine.AssetBundleModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(InteropPath)/UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PhotonUnityNetworking">
       <HintPath>$(InteropPath)/PhotonUnityNetworking.dll</HintPath>
       <Private>False</Private>
@@ -102,6 +106,10 @@
       <HintPath>$(InteropPath)/Il2CppHurricaneVR.Framework.dll</HintPath>
       <Private>False</Private>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\**\*" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="Build">

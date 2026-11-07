@@ -62,7 +62,7 @@ public class DroneCameraRig : MonoBehaviour
     {
         _camObj = new GameObject("FPV_Camera");
         _camObj.transform.SetParent(transform, false);
-        _camObj.transform.localPosition = new Vector3(0f, 0.05f, 0.12f);
+        _camObj.transform.localPosition = new Vector3(0f, 0.0166f, 0.105f);
         _camObj.transform.localRotation = Quaternion.Euler(-CurrentTiltAngle, 0f, 0f);
 
         _cam = _camObj.AddComponent<Camera>();

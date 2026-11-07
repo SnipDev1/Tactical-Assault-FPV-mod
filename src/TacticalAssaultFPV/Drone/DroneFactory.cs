@@ -72,56 +72,66 @@ public static class DroneFactory
             }
         }
 
-        // Dedicated BoxCollider for the drone physical body (~0.8x compact strike drone scale)
+        // Dedicated BoxCollider for the drone physical body
         var rootCol = drone.AddComponent<BoxCollider>();
-        rootCol.center = Vector3.zero;
-        rootCol.size = new Vector3(0.224f, 0.064f, 0.224f);
+        rootCol.center = new Vector3(0f, -0.012f, 0f);
+        rootCol.size = new Vector3(0.286f, 0.116f, 0.256f);
 
-        // 4. Attach custom visual FPV Drone model (visual only, strip primitive colliders)
+        // 4. Attach custom visual FPV Drone model (from embedded resources)
         GameObject visualRoot = new GameObject("Drone_Visuals");
         visualRoot.transform.SetParent(drone.transform, false);
         visualRoot.transform.localPosition = Vector3.zero;
         visualRoot.transform.localRotation = Quaternion.identity;
 
-        // Frame body (scaled ~0.8x)
-        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        body.name = "Frame_Body";
+        // Frame body (chassis, arms, standoffs, camera mount, battery, motor bases)
+        GameObject body = new GameObject("Frame_Body");
         body.transform.SetParent(visualRoot.transform, false);
-        body.transform.localScale = new Vector3(0.096f, 0.032f, 0.176f);
-        SetColor(body, new Color(0.15f, 0.15f, 0.15f));
-        RemoveCollider(body);
+        var bodyFilter = body.AddComponent<MeshFilter>();
+        bodyFilter.sharedMesh = DroneModelAssets.BodyMesh;
+        var bodyRenderer = body.AddComponent<MeshRenderer>();
+        bodyRenderer.sharedMaterial = DroneModelAssets.DroneMaterial;
 
-        // Arms (scaled ~0.8x)
-        CreateArm(visualRoot.transform, new Vector3(0.08f, 0f, 0.08f), 45f);
-        CreateArm(visualRoot.transform, new Vector3(-0.08f, 0f, 0.08f), -45f);
-        CreateArm(visualRoot.transform, new Vector3(0.08f, 0f, -0.08f), 135f);
-        CreateArm(visualRoot.transform, new Vector3(-0.08f, 0f, -0.08f), -135f);
-
-        // Motors & Propellers (scaled ~0.8x frame with elongated propeller blades)
+        // 4 Propellers (mounted on motor shafts at ±0.1178m X, +0.0261m Y, ±0.0973m Z)
+        Vector3[] propPositions = new Vector3[]
+        {
+            new Vector3( 0.1178f, 0.0261f,  0.0973f), // Front-Right
+            new Vector3(-0.1178f, 0.0261f,  0.0973f), // Front-Left
+            new Vector3( 0.1178f, 0.0261f, -0.0973f), // Rear-Right
+            new Vector3(-0.1178f, 0.0261f, -0.0973f)  // Rear-Left
+        };
         Transform[] props = new Transform[4];
-        props[0] = CreateMotorAndProp(visualRoot.transform, new Vector3(0.112f, 0.016f, 0.112f));
-        props[1] = CreateMotorAndProp(visualRoot.transform, new Vector3(-0.112f, 0.016f, 0.112f));
-        props[2] = CreateMotorAndProp(visualRoot.transform, new Vector3(0.112f, 0.016f, -0.112f));
-        props[3] = CreateMotorAndProp(visualRoot.transform, new Vector3(-0.112f, 0.016f, -0.112f));
+        for (int i = 0; i < 4; i++)
+        {
+            GameObject prop = new GameObject($"Propeller_{i}");
+            prop.transform.SetParent(visualRoot.transform, false);
+            prop.transform.localPosition = propPositions[i];
+            prop.transform.localRotation = Quaternion.identity;
+            var filter = prop.AddComponent<MeshFilter>();
+            filter.sharedMesh = DroneModelAssets.PropMesh;
+            var renderer = prop.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = DroneModelAssets.DroneMaterial;
+            props[i] = prop.transform;
+        }
 
-        // Warhead payload (Contact RGD / Impact Grenade warhead, scaled ~0.8x)
-        GameObject warhead = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        warhead.name = "Warhead_Charge";
+        // Warhead payload (Contact bomb mounted under drone belly)
+        GameObject warhead = new GameObject("Warhead_Charge");
         warhead.transform.SetParent(visualRoot.transform, false);
-        warhead.transform.localPosition = new Vector3(0f, -0.032f, 0f);
-        warhead.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        warhead.transform.localScale = new Vector3(0.048f, 0.08f, 0.048f);
-        SetColor(warhead, new Color(0.25f, 0.35f, 0.2f));
-        RemoveCollider(warhead);
+        warhead.transform.localPosition = Vector3.zero;
+        warhead.transform.localRotation = Quaternion.identity;
+        var bombFilter = warhead.AddComponent<MeshFilter>();
+        bombFilter.sharedMesh = DroneModelAssets.BombMesh;
+        var bombRenderer = warhead.AddComponent<MeshRenderer>();
+        bombRenderer.sharedMaterial = DroneModelAssets.BombMaterial;
 
-        // Status Power LED (unlit dark until powered on by pilot trigger, scaled ~0.8x)
-        GameObject led = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        led.name = "Status_LED";
+        // Status Power LED (unlit dark until powered on by pilot trigger)
+        GameObject led = new GameObject("Status_LED");
         led.transform.SetParent(visualRoot.transform, false);
-        led.transform.localPosition = new Vector3(0f, 0.02f, 0.064f);
-        led.transform.localScale = new Vector3(0.016f, 0.016f, 0.016f);
-        SetColor(led, new Color(0.12f, 0.12f, 0.12f));
-        RemoveCollider(led);
+        led.transform.localPosition = Vector3.zero;
+        led.transform.localRotation = Quaternion.identity;
+        var ledFilter = led.AddComponent<MeshFilter>();
+        ledFilter.sharedMesh = DroneModelAssets.LampMesh;
+        var ledRenderer = led.AddComponent<MeshRenderer>();
+        ledRenderer.sharedMaterial = DroneModelAssets.LampMaterial;
 
         // 5. Attach physical acoustic model FPV motor whine + prop wash
         AudioSource motorAudio = DroneMotorAudio.CreateSource(drone, DroneMotorAudio.MotorClip, 0.75f);
@@ -428,39 +438,6 @@ public static class DroneFactory
         }
     }
 
-    private static void CreateArm(Transform parent, Vector3 offset, float angle)
-    {
-        GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        arm.name = "Arm";
-        arm.transform.SetParent(parent, false);
-        arm.transform.localPosition = offset * 0.5f;
-        arm.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
-        arm.transform.localScale = new Vector3(0.012f, 0.0064f, 0.13f);
-        SetColor(arm, new Color(0.2f, 0.2f, 0.2f));
-        RemoveCollider(arm);
-    }
-
-    private static Transform CreateMotorAndProp(Transform parent, Vector3 pos)
-    {
-        GameObject motor = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        motor.name = "Motor";
-        motor.transform.SetParent(parent, false);
-        motor.transform.localPosition = pos;
-        motor.transform.localScale = new Vector3(0.0224f, 0.0096f, 0.0224f);
-        SetColor(motor, new Color(0.1f, 0.1f, 0.1f));
-        RemoveCollider(motor);
-
-        GameObject prop = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        prop.name = "Propeller";
-        prop.transform.SetParent(motor.transform, false);
-        prop.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-        // Elongated propeller blades for aggressive 7-9" FPV appearance
-        prop.transform.localScale = new Vector3(0.14f, 0.06f, 2.4f);
-        SetColor(prop, new Color(0.7f, 0.7f, 0.7f, 0.8f));
-        RemoveCollider(prop);
-
-        return motor.transform;
-    }
 
     private static Material _bodyMat;
     private static Material _armMat;
